@@ -144,9 +144,10 @@
         <p>[ BAŞLAMAK İÇİN TIKLA ]</p>
         <p style="font-size: 0.8rem; color: #666;">KULAKLIK ÖNERİLİR</p>
         <p style="font-size: 0.7rem; color: #888; margin-top: 15px;">
+            🖱️ MOUSE = Etrafa Bak<br>
             🖱️ SOL TIK = Büyü At<br>
             🖱️ SAĞ TIK = Yakın Saldırı<br>
-            ⌨️ WASD = Hareket<br>
+            ⌨️ WASD = Yürü (Strafe)<br>
             ⌨️ E = Kapıyı Aç<br>
             ⌨️ SHIFT = Koş
         </p>
@@ -211,17 +212,19 @@
         // SCARY ENEMIES ARRAY - MORE ENEMIES FOR BIGGER MAP!
         let enemies = [
             // Shadow Stalker - The original, enhanced with glowing eyes and tendrils
-            { x: 18.5, y: 18.5, active: false, speed: 2.2, type: 'stalker', phase: 0, hp: 100, maxHp: 100, hitFlash: 0, breathPhase: 0 },
+            { x: 18.5, y: 18.5, active: false, speed: 2.2, type: 'stalker', phase: 0, hp: 200, maxHp: 200, hitFlash: 0, breathPhase: 0 },
             // The Crawler - Moves erratically on walls, spider-like
-            { x: 20.5, y: 5.5, active: false, speed: 3.5, type: 'crawler', phase: 0, hp: 60, maxHp: 60, hitFlash: 0, legPhase: 0 },
+            { x: 20.5, y: 5.5, active: false, speed: 3.5, type: 'crawler', phase: 0, hp: 120, maxHp: 120, hitFlash: 0, legPhase: 0 },
             // Glitch Entity - Teleports randomly, distorts vision
-            { x: 5.5, y: 18.5, active: false, speed: 1.8, type: 'glitch', phase: 0, teleportTimer: 0, hp: 80, maxHp: 80, hitFlash: 0 },
+            { x: 5.5, y: 18.5, active: false, speed: 1.8, type: 'glitch', phase: 0, teleportTimer: 0, hp: 160, maxHp: 160, hitFlash: 0 },
             // The Watcher - Giant floating eye, freezes player when looking
-            { x: 12.5, y: 12.5, active: false, speed: 1.2, type: 'watcher', phase: 0, stareTimer: 0, hp: 120, maxHp: 120, hitFlash: 0, pupilX: 0, pupilY: 0 },
+            { x: 12.5, y: 12.5, active: false, speed: 1.2, type: 'watcher', phase: 0, stareTimer: 0, hp: 240, maxHp: 240, hitFlash: 0, pupilX: 0, pupilY: 0 },
             // Second Stalker for bigger map
-            { x: 6.5, y: 6.5, active: false, speed: 2.0, type: 'stalker', phase: Math.PI, hp: 100, maxHp: 100, hitFlash: 0, breathPhase: 0 },
+            { x: 6.5, y: 6.5, active: false, speed: 2.0, type: 'stalker', phase: Math.PI, hp: 200, maxHp: 200, hitFlash: 0, breathPhase: 0 },
             // Second Crawler
-            { x: 18.5, y: 8.5, active: false, speed: 3.2, type: 'crawler', phase: Math.PI / 2, hp: 60, maxHp: 60, hitFlash: 0, legPhase: 0 }
+            { x: 18.5, y: 8.5, active: false, speed: 3.2, type: 'crawler', phase: Math.PI / 2, hp: 120, maxHp: 120, hitFlash: 0, legPhase: 0 },
+            // NEW ENEMY: Third Stalker (The Ambiancer)
+            { x: 2.5, y: 15.5, active: false, speed: 2.4, type: 'stalker', phase: Math.PI / 3, hp: 200, maxHp: 200, hitFlash: 0, breathPhase: 0 }
         ];
         let enemy = enemies[0]; // Keep for compatibility
         let screenShake = 0;
@@ -265,6 +268,13 @@
                 running = true;
                 enemies.forEach(e => e.active = true);
                 requestAnimationFrame(loop);
+            });
+
+            // MOUSE LOOK (FPS STYLE)
+            document.addEventListener('mousemove', (e) => {
+                if (document.pointerLockElement === canvas && running) {
+                    player.dir += e.movementX * 0.003;
+                }
             });
 
             // MAGIC SPELL CASTING - Left click to cast, Right click melee
@@ -582,14 +592,34 @@
             if (gameWon) return;
 
             // Player Movement
+            // Player Movement (WASD + Strafe)
             const moveStep = (inputKeys.shift ? player.speed * 1.5 : player.speed) * dt;
-            const rotStep = player.rotSpeed * dt;
 
-            if (inputKeys.left) player.dir -= rotStep;
-            if (inputKeys.right) player.dir += rotStep;
+            let moveX = 0;
+            let moveY = 0;
 
-            const newX = player.x + Math.cos(player.dir) * (inputKeys.w ? moveStep : inputKeys.s ? -moveStep : 0);
-            const newY = player.y + Math.sin(player.dir) * (inputKeys.w ? moveStep : inputKeys.s ? -moveStep : 0);
+            // Forward/Back
+            if (inputKeys.w) {
+                moveX += Math.cos(player.dir) * moveStep;
+                moveY += Math.sin(player.dir) * moveStep;
+            }
+            if (inputKeys.s) {
+                moveX -= Math.cos(player.dir) * moveStep;
+                moveY -= Math.sin(player.dir) * moveStep;
+            }
+
+            // Strafe Left/Right
+            if (inputKeys.left) { // A
+                moveX += Math.cos(player.dir - Math.PI / 2) * moveStep;
+                moveY += Math.sin(player.dir - Math.PI / 2) * moveStep;
+            }
+            if (inputKeys.right) { // D
+                moveX += Math.cos(player.dir + Math.PI / 2) * moveStep;
+                moveY += Math.sin(player.dir + Math.PI / 2) * moveStep;
+            }
+
+            const newX = player.x + moveX;
+            const newY = player.y + moveY;
 
             // Collision (allow walking on keys and exit door)
             if (map[Math.floor(newY)] && (map[Math.floor(newY)][Math.floor(player.x)] === 0 || map[Math.floor(newY)][Math.floor(player.x)] >= 2)) player.y = newY;
@@ -855,7 +885,6 @@
                 ctx.fillStyle = `rgb(${color}, ${color}, ${color})`;
 
                 // Key is special logic, simplistic rendering for snippet
-                // Check for items
                 /* Advanced: Sprite rendering is complex for 1 file. 
                    We will indicate items via UI/HUD radar or proximity sound. */
 
