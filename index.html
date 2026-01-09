@@ -143,13 +143,12 @@
         <p style="font-size: 1rem; color: #ff4444; margin-bottom: 15px;">MÜHFAK SİZİ YOK EDECEK</p>
         <p>[ BAŞLAMAK İÇİN TIKLA ]</p>
         <p style="font-size: 0.8rem; color: #666;">KULAKLIK ÖNERİLİR</p>
-        <p style="font-size: 0.7rem; color: #888; margin-top: 15px;">
-            🖱️ MOUSE = Etrafa Bak<br>
-            🖱️ SOL TIK = Büyü At<br>
-            🖱️ SAĞ TIK = Yakın Saldırı<br>
-            ⌨️ WASD = Yürü (Strafe)<br>
-            ⌨️ E = Kapıyı Aç<br>
-            ⌨️ SHIFT = Koş
+        🖱️ MOUSE = Etrafa Bak<br>
+        🖱️ SOL TIK = Büyü At<br>
+        🖱️ SAĞ TIK = Yakın Saldırı<br>
+        ⌨️ WASD = Yürü (Strafe)<br>
+        ⌨️ E = Kapıyı Aç<br>
+        ⌨️ SHIFT = Hızlı Yürü
         </p>
         <p style="font-size: 0.6rem; color: #555; margin-top: 10px;">3 anahtar bul → Çıkış kapısına git → E'ye bas →
             Kaç!</p>
@@ -203,7 +202,7 @@
         let gameWon = false;
 
         // Game State
-        const player = { x: 2.5, y: 2.5, dir: 0, speed: 3.5, rotSpeed: 1.5 };
+        const player = { x: 2.5, y: 2.5, dir: 0, speed: 2.5, rotSpeed: 1.5 };
         const inputKeys = { w: false, s: false, a: false, d: false, left: false, right: false, shift: false, e: false };
         const map = []; // 1: Wall, 0: Empty, 2: Key, 3: Exit Door
         let collectedKeys = 0;
@@ -593,7 +592,9 @@
 
             // Player Movement
             // Player Movement (WASD + Strafe)
-            const moveStep = (inputKeys.shift ? player.speed * 1.5 : player.speed) * dt;
+            // Old speed was 3.5. New walk is 2.5, Sprint is 3.5 (Old normal)
+            const currentSpeed = inputKeys.shift ? 3.5 : player.speed;
+            const moveStep = currentSpeed * dt;
 
             let moveX = 0;
             let moveY = 0;
