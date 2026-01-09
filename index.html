@@ -14,7 +14,7 @@
             cursor: none;
         }
 
-        canvas {
+        #game {
             display: block;
             width: 100vw;
             height: 100vh;
@@ -23,11 +23,25 @@
 
         #ui {
             position: absolute;
-            top: 20px;
+            top: 130px;
             left: 20px;
             z-index: 2;
             pointer-events: none;
             mix-blend-mode: difference;
+        }
+
+        #minimap-container {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        #minimap {
+            border: 2px solid rgba(0, 255, 100, 0.5);
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 255, 100, 0.3);
         }
 
         #overlay {
@@ -78,16 +92,49 @@
             font-size: 1.2rem;
             opacity: 0.8;
         }
+
+        /* Crosshair / Staff Aiming */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 6;
+            pointer-events: none;
+            font-size: 30px;
+            color: #8800ff;
+            text-shadow: 0 0 10px #ff00ff, 0 0 20px #8800ff;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.7;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+        }
     </style>
 </head>
 
 <body>
+
+    <div id="minimap-container">
+        <canvas id="minimap" width="110" height="110"></canvas>
+    </div>
 
     <div id="ui">
         <div>SANITY: <span id="sanity-val">100%</span></div>
         <div>KEYS: <span id="keys-val">0/3</span></div>
         <div id="msg"></div>
     </div>
+    <div id="crosshair">✦</div>
     <div id="overlay"></div>
     <div id="noise"></div>
 
@@ -95,6 +142,7 @@
         <h1>THE LABYRINTH</h1>
         <p>[ CLICK TO INITIALIZE ]</p>
         <p style="font-size: 0.8rem; color: #666;">HEADPHONES REQUIRED</p>
+        <p style="font-size: 0.7rem; color: #888; margin-top: 20px;">🖱️ LEFT CLICK = CAST SPELL</p>
     </div>
 
     <canvas id="game"></canvas>
@@ -104,14 +152,18 @@
          * ENGINE: RAYCASTING (WOLFENSTEIN 3D STYLE)
          * AUDIO: WEB AUDIO API OSCILLATORS
          * AI: A* PATHFINDING + LOS CHECK
+         * MAGIC SYSTEM + MINIMAP
          */
 
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d', { alpha: false });
+        const minimapCanvas = document.getElementById('minimap');
+        const minimapCtx = minimapCanvas.getContext('2d');
         const uiSanity = document.getElementById('sanity-val');
         const uiKeys = document.getElementById('keys-val');
         const uiMsg = document.getElementById('msg');
         const startScreen = document.getElementById('start');
+        const crosshair = document.getElementById('crosshair');
 
         // Config
         const WIDTH = 640;
@@ -121,27 +173,36 @@
         const MAP_SIZE = 16;
         const MAX_DEPTH = 16; // Render distance
         const RAYS = WIDTH / 2; // Resolution divider
+        const MINIMAP_SIZE = 110;
+        const MINIMAP_SCALE = MINIMAP_SIZE / MAP_SIZE;
 
         let running = false;
         let audioCtx;
         let lastTime = 0;
 
+        // Magic Staff System
+        let staffCooldown = 0;
+        const STAFF_COOLDOWN_TIME = 0.5;
+        let spellProjectiles = [];
+        let staffGlow = 0;
+
         // Game State
-        const player = { x: 2.5, y: 2.5, dir: 0, speed: 3.0, rotSpeed: 2.5 };
+        const player = { x: 2.5, y: 2.5, dir: 0, speed: 3.0, rotSpeed: 1.5 };
         const keys = { w: false, s: false, a: false, d: false, left: false, right: false, shift: false };
         const map = []; // 1: Wall, 0: Empty, 2: Key, 3: Exit
         let collectedKeys = 0;
         let sanity = 100;
-        // SCARY ENEMIES ARRAY
+
+        // SCARY ENEMIES ARRAY - NOW WITH HEALTH!
         let enemies = [
             // Shadow Stalker - The original, enhanced with glowing eyes and tendrils
-            { x: 10.5, y: 10.5, active: false, speed: 2.0, type: 'stalker', phase: 0 },
+            { x: 10.5, y: 10.5, active: false, speed: 2.0, type: 'stalker', phase: 0, hp: 100, maxHp: 100, hitFlash: 0 },
             // The Crawler - Moves erratically on walls, spider-like
-            { x: 13.5, y: 5.5, active: false, speed: 3.5, type: 'crawler', phase: 0 },
+            { x: 13.5, y: 5.5, active: false, speed: 3.5, type: 'crawler', phase: 0, hp: 60, maxHp: 60, hitFlash: 0 },
             // Glitch Entity - Teleports randomly, distorts vision
-            { x: 5.5, y: 12.5, active: false, speed: 1.5, type: 'glitch', phase: 0, teleportTimer: 0 },
+            { x: 5.5, y: 12.5, active: false, speed: 1.5, type: 'glitch', phase: 0, teleportTimer: 0, hp: 80, maxHp: 80, hitFlash: 0 },
             // The Watcher - Giant floating eye, freezes player when looking
-            { x: 8.5, y: 8.5, active: false, speed: 1.0, type: 'watcher', phase: 0, stareTimer: 0 }
+            { x: 8.5, y: 8.5, active: false, speed: 1.0, type: 'watcher', phase: 0, stareTimer: 0, hp: 120, maxHp: 120, hitFlash: 0 }
         ];
         let enemy = enemies[0]; // Keep for compatibility
         let screenShake = 0;
@@ -173,6 +234,40 @@
                 enemies.forEach(e => e.active = true);
                 requestAnimationFrame(loop);
             });
+
+            // MAGIC SPELL CASTING - Left click to cast
+            document.addEventListener('mousedown', (e) => {
+                if (!running) return;
+                if (e.button === 0 && staffCooldown <= 0) {
+                    castSpell();
+                }
+            });
+        }
+
+        // --- SPELL CASTING SYSTEM ---
+        function castSpell() {
+            staffCooldown = STAFF_COOLDOWN_TIME;
+            staffGlow = 1.0;
+
+            // Create spell projectile
+            const spell = {
+                x: player.x,
+                y: player.y,
+                dir: player.dir,
+                speed: 12,
+                life: 3,
+                damage: 25
+            };
+            spellProjectiles.push(spell);
+            playSound('spell_cast');
+
+            // Visual feedback
+            crosshair.style.transform = 'translate(-50%, -50%) scale(1.5)';
+            crosshair.style.color = '#ff00ff';
+            setTimeout(() => {
+                crosshair.style.transform = 'translate(-50%, -50%) scale(1)';
+                crosshair.style.color = '#8800ff';
+            }, 100);
         }
 
         function handleKey(k, state) {
@@ -187,24 +282,55 @@
         }
 
         // --- GENERATION ---
+        // --- GENERATION ---
         function generateMap() {
-            // Simple cellular noise or hardcoded room
+            // "OPEN CHAOS" - Reverted to random generation for wide areas as requested
+            map.length = 0;
             for (let y = 0; y < MAP_SIZE; y++) {
                 let row = [];
                 for (let x = 0; x < MAP_SIZE; x++) {
                     if (x === 0 || x === MAP_SIZE - 1 || y === 0 || y === MAP_SIZE - 1) row.push(1);
-                    else row.push(Math.random() > 0.85 ? 1 : 0);
+                    else row.push(Math.random() > 0.9 ? 1 : 0); // Only 10% walls, very open
                 }
                 map.push(row);
             }
-            // Clear spawn
+
+            // Clear Player Spawn Area
             map[2][2] = 0; map[2][3] = 0; map[3][2] = 0;
-            // Place Keys
+            map[3][3] = 0; map[1][1] = 0;
+
+            // Place Keys randomly
             let placed = 0;
             while (placed < 3) {
                 let rx = Math.floor(Math.random() * (MAP_SIZE - 2)) + 1;
                 let ry = Math.floor(Math.random() * (MAP_SIZE - 2)) + 1;
+                // Don't place near spawn
+                if (rx < 5 && ry < 5) continue;
+
                 if (map[ry][rx] === 0) { map[ry][rx] = 2; placed++; }
+            }
+
+            // Reset and place enemies in valid spots
+            if (enemies) {
+                // Strategic spread in corners
+                const spawnPoints = [
+                    { x: 13.5, y: 13.5 }, // Far corner
+                    { x: 13.5, y: 2.5 },  // Top right
+                    { x: 2.5, y: 13.5 },  // Bottom left
+                    { x: 8.5, y: 8.5 }    // Middle
+                ];
+
+                enemies.forEach((e, i) => {
+                    let sp = spawnPoints[i % spawnPoints.length];
+                    // Ensure space is clear
+                    if (map[Math.floor(sp.y)][Math.floor(sp.x)] !== 0) {
+                        map[Math.floor(sp.y)][Math.floor(sp.x)] = 0;
+                    }
+                    e.x = sp.x;
+                    e.y = sp.y;
+                    e.active = true;
+                    e.hp = e.maxHp;
+                });
             }
         }
 
@@ -386,6 +512,66 @@
             // Decay effects
             screenShake *= 0.9;
             glitchEffect *= 0.95;
+            staffGlow *= 0.9;
+            staffCooldown -= dt;
+
+            // UPDATE SPELL PROJECTILES
+            spellProjectiles = spellProjectiles.filter(spell => {
+                // Move spell
+                spell.x += Math.cos(spell.dir) * spell.speed * dt;
+                spell.y += Math.sin(spell.dir) * spell.speed * dt;
+                spell.life -= dt;
+
+                // Check wall collision
+                if (spell.x < 0 || spell.x >= MAP_SIZE || spell.y < 0 || spell.y >= MAP_SIZE) {
+                    return false;
+                }
+                if (map[Math.floor(spell.y)][Math.floor(spell.x)] === 1) {
+                    return false;
+                }
+
+                // Check enemy collision
+                for (let enemy of enemies) {
+                    if (!enemy.active || enemy.hp <= 0) continue;
+
+                    let dx = spell.x - enemy.x;
+                    let dy = spell.y - enemy.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 0.8) {
+                        // HIT! Damage enemy
+                        enemy.hp -= spell.damage;
+                        enemy.hitFlash = 1.0;
+                        screenShake = 3;
+
+                        // ENEMY SCREAM!
+                        playSound('enemy_scream', enemy.type);
+
+                        // Show damage message
+                        uiMsg.innerText = `${enemy.type.toUpperCase()} HIT! -${spell.damage} HP`;
+                        setTimeout(() => uiMsg.innerText = "", 1500);
+
+                        // Check if enemy died
+                        if (enemy.hp <= 0) {
+                            enemy.active = false;
+                            playSound('enemy_death', enemy.type);
+                            uiMsg.innerText = `${enemy.type.toUpperCase()} DESTROYED!`;
+                            setTimeout(() => uiMsg.innerText = "", 2000);
+                        }
+
+                        return false; // Remove spell
+                    }
+                }
+
+                return spell.life > 0;
+            });
+
+            // Decay enemy hit flash
+            enemies.forEach(enemy => {
+                if (enemy.hitFlash > 0) {
+                    enemy.hitFlash *= 0.85;
+                }
+            });
 
             if (sanity < 0) gameOver('insanity');
             uiSanity.innerText = Math.floor(sanity) + "%";
@@ -652,15 +838,250 @@
                             ctx.shadowBlur = 0;
                         }
                     }
+
+                    // ===== HEALTH BAR above enemy =====
+                    if (enemy.hp > 0 && enemy.hp < enemy.maxHp) {
+                        let barWidth = spriteWidth * 0.8;
+                        let barHeight = 6;
+                        let barX = screenX - barWidth / 2;
+                        let barY = HEIGHT / 2 - spriteHeight / 2 - 15;
+
+                        // Background
+                        ctx.fillStyle = 'rgba(50, 0, 0, 0.8)';
+                        ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                        // Health fill
+                        let hpPercent = enemy.hp / enemy.maxHp;
+                        let hpColor = hpPercent > 0.5 ? '#00ff00' : hpPercent > 0.25 ? '#ffff00' : '#ff0000';
+                        ctx.fillStyle = hpColor;
+                        ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+
+                        // Border
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(barX, barY, barWidth, barHeight);
+                    }
+
+                    // ===== HIT FLASH overlay =====
+                    if (enemy.hitFlash > 0.1) {
+                        ctx.fillStyle = `rgba(255, 100, 255, ${enemy.hitFlash * 0.5})`;
+                        ctx.fillRect(screenX - spriteWidth / 2 - 5, HEIGHT / 2 - spriteHeight / 2, spriteWidth + 10, spriteHeight);
+                    }
                 }
             });
+
+            // ===== RENDER SPELL PROJECTILES =====
+            spellProjectiles.forEach(spell => {
+                let dx = spell.x - player.x;
+                let dy = spell.y - player.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                let spellAngle = Math.atan2(dy, dx) - player.dir;
+
+                while (spellAngle < -Math.PI) spellAngle += 2 * Math.PI;
+                while (spellAngle > Math.PI) spellAngle -= 2 * Math.PI;
+
+                if (Math.abs(spellAngle) < FOV / 1.5 && dist < MAX_DEPTH && dist > 0.3) {
+                    let screenX = (0.5 * (spellAngle / (FOV / 2)) + 0.5) * WIDTH;
+                    let spellSize = 30 / dist;
+
+                    // Glowing magic orb
+                    ctx.shadowBlur = 25;
+                    ctx.shadowColor = '#ff00ff';
+                    ctx.beginPath();
+                    let gradient = ctx.createRadialGradient(screenX, HEIGHT / 2, 0, screenX, HEIGHT / 2, spellSize);
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                    gradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.9)');
+                    gradient.addColorStop(1, 'rgba(100, 0, 200, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.arc(screenX, HEIGHT / 2, spellSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+
+            // ===== RENDER MAGIC STAFF on screen =====
+            renderStaff();
 
             if (screenShake > 0.1) {
                 ctx.restore();
             }
+
+            // ===== RENDER MINIMAP =====
+            renderMinimap();
         }
 
-        function playSound(type) {
+        // --- RENDER MAGIC STAFF ---
+        function renderStaff() {
+            // Staff at bottom right of screen
+            let staffX = WIDTH - 80;
+            let staffY = HEIGHT - 20;
+            let glowIntensity = staffGlow * 30;
+
+            // Staff glow when casting
+            if (staffGlow > 0.1) {
+                ctx.shadowBlur = glowIntensity;
+                ctx.shadowColor = '#ff00ff';
+            }
+
+            // Staff body
+            ctx.strokeStyle = '#553322';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.moveTo(staffX, staffY);
+            ctx.lineTo(staffX - 40, staffY - 100);
+            ctx.stroke();
+
+            // Crystal at top
+            ctx.fillStyle = staffGlow > 0.1 ? '#ff88ff' : '#8855ff';
+            ctx.shadowBlur = 15 + glowIntensity;
+            ctx.shadowColor = '#8800ff';
+            ctx.beginPath();
+            ctx.moveTo(staffX - 40, staffY - 100);
+            ctx.lineTo(staffX - 50, staffY - 120);
+            ctx.lineTo(staffX - 40, staffY - 140);
+            ctx.lineTo(staffX - 30, staffY - 120);
+            ctx.closePath();
+            ctx.fill();
+
+            // Inner glow
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.beginPath();
+            ctx.arc(staffX - 40, staffY - 120, 5 + staffGlow * 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+
+            // Cooldown indicator
+            if (staffCooldown > 0) {
+                ctx.fillStyle = 'rgba(100, 100, 100, 0.7)';
+                ctx.fillRect(staffX - 60, staffY - 150, 40, 8);
+                ctx.fillStyle = '#ff00ff';
+                let cdPercent = 1 - (staffCooldown / STAFF_COOLDOWN_TIME);
+                ctx.fillRect(staffX - 60, staffY - 150, 40 * cdPercent, 8);
+            }
+        }
+
+        // --- RENDER MINIMAP (Bird's eye view) ---
+        function renderMinimap() {
+            // Clear minimap
+            minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            minimapCtx.fillRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+
+            // Draw walls
+            for (let y = 0; y < MAP_SIZE; y++) {
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    let block = map[y][x];
+                    if (block === 1) {
+                        minimapCtx.fillStyle = 'rgba(100, 100, 100, 0.8)';
+                    } else if (block === 2) {
+                        minimapCtx.fillStyle = 'rgba(255, 215, 0, 0.9)'; // Keys are gold
+                    } else {
+                        continue; // Don't draw empty
+                    }
+                    minimapCtx.fillRect(
+                        x * MINIMAP_SCALE,
+                        y * MINIMAP_SCALE,
+                        MINIMAP_SCALE,
+                        MINIMAP_SCALE
+                    );
+                }
+            }
+
+            // Draw enemies on minimap
+            enemies.forEach(enemy => {
+                if (!enemy.active) return;
+
+                let color;
+                switch (enemy.type) {
+                    case 'stalker': color = 'rgba(255, 0, 0, 0.9)'; break;
+                    case 'crawler': color = 'rgba(255, 200, 0, 0.9)'; break;
+                    case 'glitch': color = 'rgba(0, 255, 255, 0.9)'; break;
+                    case 'watcher': color = 'rgba(255, 100, 100, 0.9)'; break;
+                    default: color = 'rgba(255, 0, 0, 0.9)';
+                }
+
+                minimapCtx.fillStyle = color;
+                minimapCtx.beginPath();
+                minimapCtx.arc(
+                    enemy.x * MINIMAP_SCALE,
+                    enemy.y * MINIMAP_SCALE,
+                    3,
+                    0,
+                    Math.PI * 2
+                );
+                minimapCtx.fill();
+
+                // HP indicator ring
+                if (enemy.hp < enemy.maxHp) {
+                    minimapCtx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
+                    minimapCtx.lineWidth = 1;
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(
+                        enemy.x * MINIMAP_SCALE,
+                        enemy.y * MINIMAP_SCALE,
+                        5,
+                        0,
+                        Math.PI * 2 * (enemy.hp / enemy.maxHp)
+                    );
+                    minimapCtx.stroke();
+                }
+            });
+
+            // Draw spell projectiles on minimap
+            minimapCtx.fillStyle = 'rgba(200, 100, 255, 0.9)';
+            spellProjectiles.forEach(spell => {
+                minimapCtx.beginPath();
+                minimapCtx.arc(
+                    spell.x * MINIMAP_SCALE,
+                    spell.y * MINIMAP_SCALE,
+                    2,
+                    0,
+                    Math.PI * 2
+                );
+                minimapCtx.fill();
+            });
+
+            // Draw player on minimap
+            minimapCtx.fillStyle = 'rgba(0, 255, 100, 1)';
+            minimapCtx.beginPath();
+            minimapCtx.arc(
+                player.x * MINIMAP_SCALE,
+                player.y * MINIMAP_SCALE,
+                4,
+                0,
+                Math.PI * 2
+            );
+            minimapCtx.fill();
+
+            // Draw player direction
+            minimapCtx.strokeStyle = 'rgba(0, 255, 100, 0.8)';
+            minimapCtx.lineWidth = 2;
+            minimapCtx.beginPath();
+            minimapCtx.moveTo(player.x * MINIMAP_SCALE, player.y * MINIMAP_SCALE);
+            minimapCtx.lineTo(
+                (player.x + Math.cos(player.dir) * 1.5) * MINIMAP_SCALE,
+                (player.y + Math.sin(player.dir) * 1.5) * MINIMAP_SCALE
+            );
+            minimapCtx.stroke();
+
+            // Draw FOV cone
+            minimapCtx.strokeStyle = 'rgba(0, 255, 100, 0.3)';
+            minimapCtx.lineWidth = 1;
+            minimapCtx.beginPath();
+            minimapCtx.moveTo(player.x * MINIMAP_SCALE, player.y * MINIMAP_SCALE);
+            minimapCtx.lineTo(
+                (player.x + Math.cos(player.dir - FOV / 2) * 3) * MINIMAP_SCALE,
+                (player.y + Math.sin(player.dir - FOV / 2) * 3) * MINIMAP_SCALE
+            );
+            minimapCtx.moveTo(player.x * MINIMAP_SCALE, player.y * MINIMAP_SCALE);
+            minimapCtx.lineTo(
+                (player.x + Math.cos(player.dir + FOV / 2) * 3) * MINIMAP_SCALE,
+                (player.y + Math.sin(player.dir + FOV / 2) * 3) * MINIMAP_SCALE
+            );
+            minimapCtx.stroke();
+        }
+
+        function playSound(type, enemyType) {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const g = audioCtx.createGain();
@@ -683,11 +1104,143 @@
                 g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'spell_cast') {
+                // Magic spell whoosh sound
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.08);
+                osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.15);
+                g.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+
+                // Add a second harmonic for magic feel
+                const osc2 = audioCtx.createOscillator();
+                const g2 = audioCtx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc2.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+                g2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                g2.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+                osc2.connect(g2).connect(audioCtx.destination);
+                osc2.start();
+                osc2.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'enemy_scream') {
+                // TERRIFYING SCREAM - Different for each enemy type!
+                osc.type = 'sawtooth';
+
+                if (enemyType === 'stalker') {
+                    // Deep demonic growl
+                    osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.1);
+                    osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.3);
+                    g.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.4);
+                } else if (enemyType === 'crawler') {
+                    // High pitched shriek like a spider
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.05);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+                    g.gain.setValueAtTime(0.35, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                } else if (enemyType === 'glitch') {
+                    // Digital screeching static
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(900, audioCtx.currentTime + 0.03);
+                    osc.frequency.setValueAtTime(200, audioCtx.currentTime + 0.06);
+                    osc.frequency.setValueAtTime(1200, audioCtx.currentTime + 0.09);
+                    osc.frequency.setValueAtTime(100, audioCtx.currentTime + 0.12);
+                    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                } else if (enemyType === 'watcher') {
+                    // Eerie wailing moan
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.15);
+                    osc.frequency.exponentialRampToValueAtTime(350, audioCtx.currentTime + 0.4);
+                    g.gain.setValueAtTime(0.35, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.5);
+                } else {
+                    // Default scream
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                }
+            } else if (type === 'enemy_death') {
+                // DEATH SCREAM - Long agonizing sound
+                osc.type = 'sawtooth';
+
+                if (enemyType === 'stalker') {
+                    // Fading demonic roar
+                    osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.8);
+                    g.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.0);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 1.0);
+                } else if (enemyType === 'crawler') {
+                    // Chittering death squeal
+                    for (let i = 0; i < 5; i++) {
+                        const o = audioCtx.createOscillator();
+                        const gg = audioCtx.createGain();
+                        o.type = 'sawtooth';
+                        o.frequency.setValueAtTime(1500 - i * 200, audioCtx.currentTime + i * 0.1);
+                        o.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + i * 0.1 + 0.15);
+                        gg.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.1);
+                        gg.gain.linearRampToValueAtTime(0, audioCtx.currentTime + i * 0.1 + 0.2);
+                        o.connect(gg).connect(audioCtx.destination);
+                        o.start(audioCtx.currentTime + i * 0.1);
+                        o.stop(audioCtx.currentTime + i * 0.1 + 0.2);
+                    }
+                    return; // Early return since we created our own oscillators
+                } else if (enemyType === 'glitch') {
+                    // Digital corruption sound
+                    osc.type = 'square';
+                    for (let i = 0; i < 8; i++) {
+                        osc.frequency.setValueAtTime(Math.random() * 1000 + 200, audioCtx.currentTime + i * 0.05);
+                    }
+                    g.gain.setValueAtTime(0.35, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.5);
+                } else if (enemyType === 'watcher') {
+                    // Horrifying scream that fades
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+                    osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.8);
+                    g.gain.setValueAtTime(0.45, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.0);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 1.0);
+                } else {
+                    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+                    g.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.6);
+                }
             }
         }
 
         function gameOver(killer) {
             running = false;
+            document.exitPointerLock(); // FIX: Release cursor so user can click
+
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -722,12 +1275,16 @@
             ctx.font = "16px Courier";
             ctx.fillStyle = "#666";
             ctx.fillText(subMsg, WIDTH / 2, HEIGHT / 2 + 30);
+            ctx.fillStyle = "#fff";
             ctx.fillText("[ CLICK TO RESTART ]", WIDTH / 2, HEIGHT / 2 + 60);
 
-            ambianceNode.stop();
+            if (ambianceNode) ambianceNode.stop();
 
             // Add restart functionality
-            canvas.addEventListener('click', () => location.reload(), { once: true });
+            // Use 'mousedown' on document to ensure we catch it even if pointer lock state is weird
+            setTimeout(() => {
+                document.addEventListener('mousedown', () => location.reload(), { once: true });
+            }, 500); // Small delay to prevent instant restart if clicking while dying
         }
 
         init();
