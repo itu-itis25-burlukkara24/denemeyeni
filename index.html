@@ -132,10 +132,24 @@
         const map = []; // 1: Wall, 0: Empty, 2: Key, 3: Exit
         let collectedKeys = 0;
         let sanity = 100;
-        let enemy = { x: 10.5, y: 10.5, active: false, speed: 2.2, visible: false };
+        // SCARY ENEMIES ARRAY
+        let enemies = [
+            // Shadow Stalker - The original, enhanced with glowing eyes and tendrils
+            { x: 10.5, y: 10.5, active: false, speed: 2.0, type: 'stalker', phase: 0 },
+            // The Crawler - Moves erratically on walls, spider-like
+            { x: 13.5, y: 5.5, active: false, speed: 3.5, type: 'crawler', phase: 0 },
+            // Glitch Entity - Teleports randomly, distorts vision
+            { x: 5.5, y: 12.5, active: false, speed: 1.5, type: 'glitch', phase: 0, teleportTimer: 0 },
+            // The Watcher - Giant floating eye, freezes player when looking
+            { x: 8.5, y: 8.5, active: false, speed: 1.0, type: 'watcher', phase: 0, stareTimer: 0 }
+        ];
+        let enemy = enemies[0]; // Keep for compatibility
+        let screenShake = 0;
+        let glitchEffect = 0;
+        let freezeTimer = 0;
 
         // Audio Nodes
-        let ambianceNode, heartNode, screechNode;
+        let ambianceNode, heartNode, screechNode, whisperNode;
 
         // --- INIT ---
         function init() {
@@ -156,7 +170,7 @@
                 startScreen.classList.add('hidden');
                 canvas.requestPointerLock();
                 running = true;
-                enemy.active = true;
+                enemies.forEach(e => e.active = true);
                 requestAnimationFrame(loop);
             });
         }
@@ -269,36 +283,112 @@
                 playSound('pickup');
             }
 
-            // Enemy AI (Simple Stalk)
-            if (enemy.active) {
+            // MULTI-ENEMY AI SYSTEM
+            if (freezeTimer > 0) {
+                freezeTimer -= dt;
+            }
+
+            enemies.forEach((enemy, idx) => {
+                if (!enemy.active) return;
+
                 let dx = player.x - enemy.x;
                 let dy = player.y - enemy.y;
                 let dist = Math.sqrt(dx * dx + dy * dy);
+                enemy.phase += dt * 5;
 
-                // Move towards player
-                let ex = enemy.x + (dx / dist) * enemy.speed * dt * 0.4; // Slower than player
-                let ey = enemy.y + (dy / dist) * enemy.speed * dt * 0.4;
+                // Movement based on enemy type
+                let moveX = 0, moveY = 0;
 
-                // Simple collision for enemy (can clip corners, adds scariness)
+                if (enemy.type === 'stalker') {
+                    // Shadow Stalker - Slowly follows player
+                    moveX = (dx / dist) * enemy.speed * dt * 0.4;
+                    moveY = (dy / dist) * enemy.speed * dt * 0.4;
+                }
+                else if (enemy.type === 'crawler') {
+                    // Crawler - Erratic spider-like movement
+                    let erratic = Math.sin(enemy.phase * 3) * 0.5;
+                    moveX = (dx / dist + erratic) * enemy.speed * dt * 0.5;
+                    moveY = (dy / dist + Math.cos(enemy.phase * 4) * 0.5) * enemy.speed * dt * 0.5;
+                }
+                else if (enemy.type === 'glitch') {
+                    // Glitch Entity - Teleports randomly
+                    enemy.teleportTimer += dt;
+                    if (enemy.teleportTimer > 3 + Math.random() * 2) {
+                        // Teleport to random valid position near player
+                        let angle = Math.random() * Math.PI * 2;
+                        let teleportDist = 3 + Math.random() * 4;
+                        let newX = player.x + Math.cos(angle) * teleportDist;
+                        let newY = player.y + Math.sin(angle) * teleportDist;
+                        newX = Math.max(1, Math.min(MAP_SIZE - 2, newX));
+                        newY = Math.max(1, Math.min(MAP_SIZE - 2, newY));
+                        if (map[Math.floor(newY)][Math.floor(newX)] !== 1) {
+                            enemy.x = newX;
+                            enemy.y = newY;
+                            glitchEffect = 1.0;
+                            playSound('glitch');
+                        }
+                        enemy.teleportTimer = 0;
+                    }
+                    moveX = (dx / dist) * enemy.speed * dt * 0.3;
+                    moveY = (dy / dist) * enemy.speed * dt * 0.3;
+                }
+                else if (enemy.type === 'watcher') {
+                    // The Watcher - Freezes player when in view
+                    let spriteAngle = Math.atan2(dy, dx) - player.dir;
+                    while (spriteAngle < -Math.PI) spriteAngle += 2 * Math.PI;
+                    while (spriteAngle > Math.PI) spriteAngle -= 2 * Math.PI;
+
+                    if (Math.abs(spriteAngle) < FOV / 2 && dist < MAX_DEPTH) {
+                        // Player is looking at the Watcher
+                        enemy.stareTimer += dt;
+                        if (enemy.stareTimer > 0.5) {
+                            freezeTimer = 0.3;
+                            sanity -= dt * 8;
+                        }
+                    } else {
+                        enemy.stareTimer = 0;
+                        moveX = (dx / dist) * enemy.speed * dt * 0.6;
+                        moveY = (dy / dist) * enemy.speed * dt * 0.6;
+                    }
+                }
+
+                // Apply movement with collision
+                let ex = enemy.x + moveX;
+                let ey = enemy.y + moveY;
                 if (map[Math.floor(ey)][Math.floor(ex)] !== 1) {
-                    enemy.x = ex;
-                    enemy.y = ey;
+                    if (freezeTimer <= 0 || enemy.type === 'watcher') {
+                        enemy.x = ex;
+                        enemy.y = ey;
+                    }
                 }
 
-                // Heartbeat / Proximity
-                let beatRate = Math.max(200, dist * 100);
-                if (Date.now() % Math.floor(beatRate) < 20) heartNode.play();
+                // Proximity effects
+                if (dist < 4) {
+                    // Heartbeat based on closest enemy
+                    let beatRate = Math.max(150, dist * 80);
+                    if (Date.now() % Math.floor(beatRate) < 20) heartNode.play();
 
-                // Death
+                    // Screen shake when very close
+                    if (dist < 2) {
+                        screenShake = Math.max(screenShake, (2 - dist) * 3);
+                    }
+                }
+
+                // Sanity drain based on proximity
+                if (dist < 3) sanity -= dt * (4 - dist) * 2;
+
+                // Death check
                 if (dist < 0.5) {
-                    gameOver();
+                    gameOver(enemy.type);
                 }
+            });
 
-                // Sanity Drain
-                if (dist < 3) sanity -= dt * 5;
-                if (sanity < 0) gameOver();
-                uiSanity.innerText = Math.floor(sanity) + "%";
-            }
+            // Decay effects
+            screenShake *= 0.9;
+            glitchEffect *= 0.95;
+
+            if (sanity < 0) gameOver('insanity');
+            uiSanity.innerText = Math.floor(sanity) + "%";
         }
 
         function render() {
@@ -365,31 +455,208 @@
                 ctx.fillRect(x * w, ceiling, w, wallHeight);
             }
 
-            // Render Enemy (Billboard Sprite Logic Simplified)
-            // Calculate angle to enemy
-            let dx = enemy.x - player.x;
-            let dy = enemy.y - player.y;
-            let dist = Math.sqrt(dx * dx + dy * dy);
-            let spriteAngle = Math.atan2(dy, dx) - player.dir;
-            while (spriteAngle < -Math.PI) spriteAngle += 2 * Math.PI;
-            while (spriteAngle > Math.PI) spriteAngle -= 2 * Math.PI;
+            // Apply screen shake
+            if (screenShake > 0.1) {
+                ctx.save();
+                ctx.translate(
+                    (Math.random() - 0.5) * screenShake * 5,
+                    (Math.random() - 0.5) * screenShake * 5
+                );
+            }
 
-            // Is visible in FOV?
-            if (Math.abs(spriteAngle) < FOV / 1.5 && dist < MAX_DEPTH) {
-                let screenX = (0.5 * (spriteAngle / (FOV / 2)) + 0.5) * WIDTH;
-                let spriteHeight = HEIGHT / dist;
-                let spriteWidth = spriteHeight * 0.6;
+            // Apply glitch effect overlay
+            if (glitchEffect > 0.1) {
+                ctx.fillStyle = `rgba(255, 0, 255, ${glitchEffect * 0.3})`;
+                for (let i = 0; i < 10; i++) {
+                    let y = Math.random() * HEIGHT;
+                    let h = Math.random() * 20;
+                    ctx.fillRect(0, y, WIDTH, h);
+                }
+            }
 
-                // Draw Scary Eyes
-                ctx.fillStyle = `rgba(255, 0, 0, ${1 - dist / 10})`;
-                ctx.beginPath();
-                ctx.arc(screenX - 10, HEIGHT / 2, spriteWidth / 5, 0, Math.PI * 2);
-                ctx.arc(screenX + 10, HEIGHT / 2, spriteWidth / 5, 0, Math.PI * 2);
-                ctx.fill();
+            // RENDER ALL SCARY ENEMIES
+            enemies.forEach((enemy) => {
+                if (!enemy.active) return;
 
-                // Shadow Body
-                ctx.fillStyle = `rgba(0,0,0, ${1 - dist / 8})`;
-                ctx.fillRect(screenX - spriteWidth / 2, HEIGHT / 2 - spriteHeight / 2 + 50, spriteWidth, spriteHeight);
+                let dx = enemy.x - player.x;
+                let dy = enemy.y - player.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                let spriteAngle = Math.atan2(dy, dx) - player.dir;
+                while (spriteAngle < -Math.PI) spriteAngle += 2 * Math.PI;
+                while (spriteAngle > Math.PI) spriteAngle -= 2 * Math.PI;
+
+                // Is visible in FOV?
+                if (Math.abs(spriteAngle) < FOV / 1.5 && dist < MAX_DEPTH && dist > 0.5) {
+                    let screenX = (0.5 * (spriteAngle / (FOV / 2)) + 0.5) * WIDTH;
+                    let spriteHeight = HEIGHT / dist;
+                    let spriteWidth = spriteHeight * 0.6;
+                    let pulse = Math.sin(enemy.phase) * 0.1 + 1;
+
+                    if (enemy.type === 'stalker') {
+                        // SHADOW STALKER - Dark figure with glowing red eyes and tendrils
+                        // Body - Tall dark silhouette
+                        ctx.fillStyle = `rgba(10, 0, 15, ${1 - dist / 12})`;
+                        ctx.fillRect(screenX - spriteWidth / 2, HEIGHT / 2 - spriteHeight / 2, spriteWidth, spriteHeight * 1.2);
+
+                        // Tendrils coming from body
+                        ctx.strokeStyle = `rgba(30, 0, 40, ${1 - dist / 10})`;
+                        ctx.lineWidth = 3;
+                        for (let t = 0; t < 6; t++) {
+                            ctx.beginPath();
+                            let tx = screenX + (t - 3) * spriteWidth / 6;
+                            let baseY = HEIGHT / 2 + spriteHeight / 3;
+                            ctx.moveTo(tx, baseY);
+                            let wave = Math.sin(enemy.phase + t) * 20;
+                            ctx.quadraticCurveTo(tx + wave, baseY + spriteHeight / 2, tx + wave * 2, baseY + spriteHeight);
+                            ctx.stroke();
+                        }
+
+                        // Glowing RED eyes
+                        let eyeGlow = 20 + Math.sin(enemy.phase * 2) * 10;
+                        ctx.shadowBlur = eyeGlow;
+                        ctx.shadowColor = 'red';
+                        ctx.fillStyle = `rgba(255, 0, 0, ${1 - dist / 8})`;
+                        ctx.beginPath();
+                        ctx.arc(screenX - spriteWidth / 5, HEIGHT / 2 - spriteHeight / 4, spriteWidth / 8 * pulse, 0, Math.PI * 2);
+                        ctx.arc(screenX + spriteWidth / 5, HEIGHT / 2 - spriteHeight / 4, spriteWidth / 8 * pulse, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+
+                        // Gaping mouth
+                        ctx.fillStyle = `rgba(50, 0, 0, ${1 - dist / 10})`;
+                        ctx.beginPath();
+                        ctx.ellipse(screenX, HEIGHT / 2, spriteWidth / 4, spriteHeight / 8 * pulse, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    else if (enemy.type === 'crawler') {
+                        // THE CRAWLER - Spider-like horror with multiple legs
+                        let crawlOffset = Math.sin(enemy.phase * 4) * 5;
+
+                        // Body (hunched over)
+                        ctx.fillStyle = `rgba(40, 20, 30, ${1 - dist / 10})`;
+                        ctx.beginPath();
+                        ctx.ellipse(screenX, HEIGHT / 2 + crawlOffset, spriteWidth / 2, spriteHeight / 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Multiple spider legs
+                        ctx.strokeStyle = `rgba(60, 30, 40, ${1 - dist / 8})`;
+                        ctx.lineWidth = 4;
+                        for (let leg = 0; leg < 8; leg++) {
+                            ctx.beginPath();
+                            let legX = screenX + (leg - 4) * spriteWidth / 8;
+                            let legPhase = Math.sin(enemy.phase * 6 + leg * 0.5) * 15;
+                            ctx.moveTo(legX, HEIGHT / 2 + crawlOffset);
+                            ctx.lineTo(legX + legPhase, HEIGHT / 2 + spriteHeight / 2 + Math.abs(legPhase));
+                            ctx.stroke();
+                        }
+
+                        // Multiple glowing eyes (spider eyes)
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = 'yellow';
+                        ctx.fillStyle = `rgba(255, 200, 0, ${1 - dist / 8})`;
+                        for (let eye = 0; eye < 6; eye++) {
+                            ctx.beginPath();
+                            let eyeX = screenX + (eye - 2.5) * spriteWidth / 10;
+                            let eyeY = HEIGHT / 2 - spriteHeight / 5 + crawlOffset + (eye % 2) * 5;
+                            ctx.arc(eyeX, eyeY, spriteWidth / 15, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.shadowBlur = 0;
+
+                        // Mandibles
+                        ctx.strokeStyle = `rgba(80, 0, 0, ${1 - dist / 8})`;
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(screenX - spriteWidth / 6, HEIGHT / 2 + spriteHeight / 6 + crawlOffset);
+                        ctx.lineTo(screenX - spriteWidth / 3, HEIGHT / 2 + spriteHeight / 3 + crawlOffset);
+                        ctx.moveTo(screenX + spriteWidth / 6, HEIGHT / 2 + spriteHeight / 6 + crawlOffset);
+                        ctx.lineTo(screenX + spriteWidth / 3, HEIGHT / 2 + spriteHeight / 3 + crawlOffset);
+                        ctx.stroke();
+                    }
+                    else if (enemy.type === 'glitch') {
+                        // GLITCH ENTITY - Distorted static humanoid
+                        // Glitchy body made of static lines
+                        for (let i = 0; i < 20; i++) {
+                            let glitchY = HEIGHT / 2 - spriteHeight / 2 + (i / 20) * spriteHeight;
+                            let glitchOffset = (Math.random() - 0.5) * 30 * (1 - dist / MAX_DEPTH);
+                            let glitchWidth = spriteWidth * (0.5 + Math.random() * 0.5);
+
+                            // RGB split effect
+                            ctx.fillStyle = `rgba(255, 0, 0, ${0.5 - dist / 20})`;
+                            ctx.fillRect(screenX - glitchWidth / 2 + glitchOffset - 3, glitchY, glitchWidth, spriteHeight / 20);
+                            ctx.fillStyle = `rgba(0, 255, 0, ${0.5 - dist / 20})`;
+                            ctx.fillRect(screenX - glitchWidth / 2 + glitchOffset, glitchY, glitchWidth, spriteHeight / 20);
+                            ctx.fillStyle = `rgba(0, 0, 255, ${0.5 - dist / 20})`;
+                            ctx.fillRect(screenX - glitchWidth / 2 + glitchOffset + 3, glitchY, glitchWidth, spriteHeight / 20);
+                        }
+
+                        // Static face
+                        ctx.fillStyle = `rgba(255, 255, 255, ${0.8 - dist / 10})`;
+                        ctx.fillRect(screenX - spriteWidth / 4, HEIGHT / 2 - spriteHeight / 3, spriteWidth / 8, spriteHeight / 20);
+                        ctx.fillRect(screenX + spriteWidth / 8, HEIGHT / 2 - spriteHeight / 3, spriteWidth / 8, spriteHeight / 20);
+
+                        // Glitching mouth that opens
+                        let mouthOpen = Math.abs(Math.sin(enemy.phase * 8)) * spriteHeight / 10;
+                        ctx.fillStyle = `rgba(0, 0, 0, ${1 - dist / 8})`;
+                        ctx.fillRect(screenX - spriteWidth / 6, HEIGHT / 2 - spriteHeight / 6, spriteWidth / 3, mouthOpen);
+                    }
+                    else if (enemy.type === 'watcher') {
+                        // THE WATCHER - Giant floating bloodshot eye
+                        let eyeSize = spriteWidth * 0.8 * pulse;
+
+                        // Outer eye (white with bloodshot veins)
+                        ctx.fillStyle = `rgba(240, 230, 220, ${1 - dist / 12})`;
+                        ctx.beginPath();
+                        ctx.ellipse(screenX, HEIGHT / 2, eyeSize, eyeSize * 0.7, 0, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Bloodshot veins
+                        ctx.strokeStyle = `rgba(200, 50, 50, ${0.7 - dist / 15})`;
+                        ctx.lineWidth = 2;
+                        for (let v = 0; v < 12; v++) {
+                            ctx.beginPath();
+                            let angle = (v / 12) * Math.PI * 2 + enemy.phase * 0.1;
+                            ctx.moveTo(screenX + Math.cos(angle) * eyeSize * 0.3, HEIGHT / 2 + Math.sin(angle) * eyeSize * 0.2);
+                            let wobble = Math.sin(enemy.phase + v) * 5;
+                            ctx.quadraticCurveTo(
+                                screenX + Math.cos(angle) * eyeSize * 0.6 + wobble,
+                                HEIGHT / 2 + Math.sin(angle) * eyeSize * 0.4,
+                                screenX + Math.cos(angle) * eyeSize * 0.95,
+                                HEIGHT / 2 + Math.sin(angle) * eyeSize * 0.65
+                            );
+                            ctx.stroke();
+                        }
+
+                        // Iris (follows player - always looking at you)
+                        ctx.fillStyle = `rgba(50, 100, 80, ${1 - dist / 10})`;
+                        ctx.beginPath();
+                        ctx.arc(screenX, HEIGHT / 2, eyeSize * 0.4, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Pupil (shrinks when looking at player)
+                        let pupilSize = enemy.stareTimer > 0.5 ? eyeSize * 0.1 : eyeSize * 0.25;
+                        ctx.fillStyle = `rgba(0, 0, 0, ${1 - dist / 10})`;
+                        ctx.beginPath();
+                        ctx.arc(screenX, HEIGHT / 2, pupilSize, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Eerie glow when staring
+                        if (enemy.stareTimer > 0.5) {
+                            ctx.shadowBlur = 30;
+                            ctx.shadowColor = 'rgba(255, 100, 100, 0.8)';
+                            ctx.strokeStyle = `rgba(255, 100, 100, ${0.5 + Math.sin(enemy.phase * 5) * 0.3})`;
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.ellipse(screenX, HEIGHT / 2, eyeSize * 1.1, eyeSize * 0.8, 0, 0, Math.PI * 2);
+                            ctx.stroke();
+                            ctx.shadowBlur = 0;
+                        }
+                    }
+                }
+            });
+
+            if (screenShake > 0.1) {
+                ctx.restore();
             }
         }
 
@@ -404,20 +671,63 @@
                 osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
                 g.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'glitch') {
+                // Creepy glitch teleport sound
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.05);
+                osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
+                g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
             }
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.2);
         }
 
-        function gameOver() {
+        function gameOver(killer) {
             running = false;
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            // Different death messages based on what killed you
+            let deathMsg = "TERMINATED";
+            let subMsg = "";
             ctx.fillStyle = "red";
+
+            if (killer === 'stalker') {
+                deathMsg = "CONSUMED";
+                subMsg = "The shadows claimed you...";
+            } else if (killer === 'crawler') {
+                deathMsg = "DEVOURED";
+                subMsg = "You felt every leg...";
+            } else if (killer === 'glitch') {
+                deathMsg = "ERR0R_404";
+                subMsg = "Reality collapsed...";
+                ctx.fillStyle = "#0f0";
+            } else if (killer === 'watcher') {
+                deathMsg = "WITNESSED";
+                subMsg = "You should not have looked...";
+                ctx.fillStyle = "#ff6666";
+            } else if (killer === 'insanity') {
+                deathMsg = "BROKEN";
+                subMsg = "Your mind shattered...";
+                ctx.fillStyle = "#8800ff";
+            }
+
             ctx.font = "40px Courier";
             ctx.textAlign = "center";
-            ctx.fillText("TERMINATED", WIDTH / 2, HEIGHT / 2);
+            ctx.fillText(deathMsg, WIDTH / 2, HEIGHT / 2);
+            ctx.font = "16px Courier";
+            ctx.fillStyle = "#666";
+            ctx.fillText(subMsg, WIDTH / 2, HEIGHT / 2 + 30);
+            ctx.fillText("[ CLICK TO RESTART ]", WIDTH / 2, HEIGHT / 2 + 60);
+
             ambianceNode.stop();
+
+            // Add restart functionality
+            canvas.addEventListener('click', () => location.reload(), { once: true });
         }
 
         init();
