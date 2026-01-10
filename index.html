@@ -120,6 +120,41 @@
                 transform: translate(-50%, -50%) scale(1.2);
             }
         }
+
+        /* Stamina Bar */
+        #stamina-container {
+            position: absolute;
+            top: 250px;
+            left: 20px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        #stamina-bar {
+            width: 120px;
+            height: 8px;
+            background: rgba(50, 50, 50, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #stamina-fill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #88ff00);
+            transition: width 0.1s ease-out;
+        }
+
+        #stamina-label {
+            font-size: 10px;
+            color: #aaa;
+            margin-bottom: 2px;
+        }
+
+        .exhausted #stamina-fill {
+            background: linear-gradient(90deg, #ff0000, #ff4400) !important;
+        }
     </style>
 </head>
 
@@ -133,6 +168,7 @@
         <div>AKIL SAĞLIĞI: <span id="sanity-val">100%</span></div>
         <div>ANAHTARLAR: <span id="keys-val">0/3</span></div>
         <div id="msg"></div>
+        <div style="margin-top: 5px;">DAYANIKLILIK: <span id="stamina-val">100%</span></div>
     </div>
     <div id="crosshair">✦</div>
     <div id="overlay"></div>
@@ -232,6 +268,24 @@
 
         // Audio Nodes
         let ambianceNode, heartNode, screechNode, whisperNode;
+
+        // === STAMINA SYSTEM ===
+        let stamina = 100;
+        const maxStamina = 100;
+        const staminaDrainRate = 30; // Per second when sprinting
+        const staminaRegenRate = 15; // Per second when not sprinting
+        let isExhausted = false; // Can't sprint when exhausted
+        const exhaustedThreshold = 30; // Must recover to this % before sprinting again
+        const uiStamina = document.getElementById('stamina-val');
+
+        // === SAW TRAP SYSTEM ===
+        let sawTraps = [];
+
+        // === STICKY GROUND (Map tile 5) ===
+        // Will be placed in generateMap()
+
+        // === PAUSE SYSTEM ===
+        let isPaused = false;
 
         // --- INIT ---
         function init() {
@@ -390,6 +444,11 @@
             if (k === 'arrowright') inputKeys.right = state;
             if (k === 'shift') inputKeys.shift = state;
             if (k === 'e') inputKeys.e = state; // Interact key for exit door
+
+            // PAUSE TOGGLE with SPACE (only on key down)
+            if (k === ' ' && state === true) {
+                isPaused = !isPaused;
+            }
         }
 
         // --- GENERATION ---
@@ -533,6 +592,32 @@
                 }
                 e.hp = e.maxHp;
             });
+
+            // === GENERATE SAW TRAPS ===
+            sawTraps = [
+                // Corridor saws - moving back and forth
+                { x: 9.5, y: 3.5, startX: 8.5, startY: 3.5, endX: 11.5, endY: 3.5, speed: 2.5, phase: 0, damage: 35 },
+                { x: 3.5, y: 12.5, startX: 3.5, startY: 10.5, endX: 3.5, endY: 14.5, speed: 2.0, phase: Math.PI, damage: 35 },
+                { x: 12.5, y: 12.5, startX: 10.5, startY: 12.5, endX: 14.5, endY: 12.5, speed: 3.0, phase: 0, damage: 40 },
+                { x: 20.5, y: 15.5, startX: 20.5, startY: 14.5, endX: 20.5, endY: 17.5, speed: 2.2, phase: Math.PI / 2, damage: 35 }
+            ];
+
+            // === PLACE STICKY GROUND (Map tile 5) ===
+            // Place in some corridor sections and room corners
+            const stickySpots = [
+                { x: 8, y: 3 }, { x: 9, y: 3 },
+                { x: 3, y: 11 }, { x: 3, y: 12 },
+                { x: 14, y: 12 }, { x: 15, y: 12 },
+                { x: 19, y: 19 }, { x: 19, y: 20 }, { x: 20, y: 19 },
+                { x: 5, y: 19 }, { x: 5, y: 20 },
+                { x: 11, y: 17 }, { x: 12, y: 17 }, { x: 13, y: 17 }
+            ];
+
+            stickySpots.forEach(spot => {
+                if (map[spot.y] && map[spot.y][spot.x] === 0) {
+                    map[spot.y][spot.x] = 5; // Sticky ground tile
+                }
+            });
         }
 
         // --- AUDIO SYSTEM (Procedural) ---
@@ -574,8 +659,18 @@
         // --- ENGINE CORE ---
         function loop(timestamp) {
             if (!running) return;
-            const dt = (timestamp - lastTime) / 1000;
+
+            // Fix: Cap dt to prevent massive first-frame delta causing enemies to fly off map
+            let dt = (timestamp - lastTime) / 1000;
+            if (dt > 0.1) dt = 0.1; // Max 100ms per frame to prevent physics explosion
             lastTime = timestamp;
+
+            // PAUSE CHECK - Skip update but still render pause screen
+            if (isPaused) {
+                renderPauseScreen();
+                requestAnimationFrame(loop);
+                return;
+            }
 
             update(dt);
 
@@ -587,13 +682,82 @@
             requestAnimationFrame(loop);
         }
 
+        // --- PAUSE SCREEN ---
+        function renderPauseScreen() {
+            // Dim the existing render
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            // Pause text
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 32px Courier';
+            ctx.textAlign = 'center';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00ffff';
+            ctx.fillText('DURDURULDU', WIDTH / 2, HEIGHT / 2 - 20);
+
+            ctx.shadowBlur = 0;
+            ctx.font = '14px Courier';
+            ctx.fillStyle = '#aaa';
+            ctx.fillText('Devam etmek için SPACE bas', WIDTH / 2, HEIGHT / 2 + 20);
+
+            // Show stats
+            ctx.font = '12px Courier';
+            ctx.fillStyle = '#666';
+            ctx.fillText(`Akıl Sağlığı: ${Math.floor(sanity)}% | Anahtarlar: ${collectedKeys}/3 | Dayanıklılık: ${Math.floor(stamina)}%`, WIDTH / 2, HEIGHT / 2 + 50);
+        }
+
         function update(dt) {
             if (gameWon) return;
 
-            // Player Movement
+            // === STAMINA SYSTEM ===
+            let isMoving = inputKeys.w || inputKeys.s || inputKeys.left || inputKeys.right;
+            let wantToSprint = inputKeys.shift && isMoving;
+            let canSprint = !isExhausted && stamina > 0;
+
+            if (wantToSprint && canSprint) {
+                stamina -= staminaDrainRate * dt;
+                if (stamina <= 0) {
+                    stamina = 0;
+                    isExhausted = true;
+                    playSound('exhausted');
+                }
+            } else {
+                // Regenerate stamina when not sprinting
+                if (stamina < maxStamina) {
+                    stamina += staminaRegenRate * dt;
+                    if (stamina > maxStamina) stamina = maxStamina;
+                }
+                // Recover from exhaustion
+                if (isExhausted && stamina >= exhaustedThreshold) {
+                    isExhausted = false;
+                }
+            }
+
+            // Update stamina UI
+            uiStamina.innerText = Math.floor(stamina) + "%";
+            if (isExhausted) {
+                uiStamina.style.color = '#ff4444';
+            } else if (stamina < 30) {
+                uiStamina.style.color = '#ffaa00';
+            } else {
+                uiStamina.style.color = '#00ff00';
+            }
+
+            // === STICKY GROUND CHECK ===
+            let px = Math.floor(player.x);
+            let py = Math.floor(player.y);
+            let onStickyGround = (map[py] && map[py][px] === 5);
+            let stickyMultiplier = onStickyGround ? 0.5 : 1.0;
+
             // Player Movement (WASD + Strafe)
-            // Old speed was 3.5. New walk is 2.5, Sprint is 3.5 (Old normal)
-            const currentSpeed = inputKeys.shift ? 3.5 : player.speed;
+            // Determine actual speed: base, sprint, sticky
+            let baseSpeed = player.speed; // 2.5
+            let sprintSpeed = 3.5;
+            let actualSprint = (wantToSprint && canSprint);
+            let currentSpeed = actualSprint ? sprintSpeed : baseSpeed;
+            currentSpeed *= stickyMultiplier;
+
             const moveStep = currentSpeed * dt;
 
             let moveX = 0;
@@ -622,13 +786,13 @@
             const newX = player.x + moveX;
             const newY = player.y + moveY;
 
-            // Collision (allow walking on keys and exit door)
+            // Collision (allow walking on keys, exit door, and sticky ground)
             if (map[Math.floor(newY)] && (map[Math.floor(newY)][Math.floor(player.x)] === 0 || map[Math.floor(newY)][Math.floor(player.x)] >= 2)) player.y = newY;
             if (map[Math.floor(player.y)] && (map[Math.floor(player.y)][Math.floor(newX)] === 0 || map[Math.floor(player.y)][Math.floor(newX)] >= 2)) player.x = newX;
 
             // Item Pickup
-            let px = Math.floor(player.x);
-            let py = Math.floor(player.y);
+            px = Math.floor(player.x);
+            py = Math.floor(player.y);
             if (map[py] && map[py][px] === 2) {
                 map[py][px] = 0;
                 collectedKeys++;
@@ -826,16 +990,54 @@
                 }
             });
 
+            // === SAW TRAP UPDATE ===
+            sawTraps.forEach(saw => {
+                saw.phase += dt * saw.speed;
+
+                // Calculate position along path using sine wave (ping-pong)
+                let t = (Math.sin(saw.phase) + 1) / 2; // 0 to 1
+                saw.x = saw.startX + (saw.endX - saw.startX) * t;
+                saw.y = saw.startY + (saw.endY - saw.startY) * t;
+
+                // Check collision with player
+                let dx = player.x - saw.x;
+                let dy = player.y - saw.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 0.8) {
+                    // Player hit by saw!
+                    sanity -= saw.damage * dt;
+                    screenShake = 5;
+
+                    // Play saw sound periodically
+                    if (Math.random() < 0.1) {
+                        playSound('saw_hit');
+                    }
+                }
+            });
+
             if (sanity < 0) gameOver('insanity');
             uiSanity.innerText = Math.floor(sanity) + "%";
         }
 
         function render() {
+            // Check if player is on sticky ground for floor color
+            let floorPx = Math.floor(player.x);
+            let floorPy = Math.floor(player.y);
+            let onSticky = (map[floorPy] && map[floorPy][floorPx] === 5);
+
             // Ceiling/Floor
             ctx.fillStyle = "#111";
             ctx.fillRect(0, 0, WIDTH, HEIGHT / 2);
-            ctx.fillStyle = "#222";
+            // Floor color changes when on sticky ground
+            ctx.fillStyle = onSticky ? "#3a1a10" : "#222";
             ctx.fillRect(0, HEIGHT / 2, WIDTH, HEIGHT / 2);
+
+            // Show warning message when on sticky ground
+            if (onSticky) {
+                ctx.fillStyle = 'rgba(100, 40, 20, 0.3)';
+                ctx.fillRect(0, HEIGHT / 2, WIDTH, HEIGHT / 2);
+            }
 
             // Raycasting
             for (let x = 0; x < RAYS; x++) {
@@ -1183,6 +1385,22 @@
                     while (keyAngle > Math.PI) keyAngle -= 2 * Math.PI;
 
                     if (Math.abs(keyAngle) < FOV / 1.5 && dist < MAX_DEPTH && dist > 0.5) {
+                        // WALL OCCLUSION CHECK - Cast ray to key to see if wall blocks view
+                        let rayDir = Math.atan2(dy, dx);
+                        let blocked = false;
+                        let checkDist = 0.5;
+                        while (checkDist < dist - 0.3) {
+                            let checkX = player.x + Math.cos(rayDir) * checkDist;
+                            let checkY = player.y + Math.sin(rayDir) * checkDist;
+                            if (map[Math.floor(checkY)] && map[Math.floor(checkY)][Math.floor(checkX)] === 1) {
+                                blocked = true;
+                                break;
+                            }
+                            checkDist += 0.3;
+                        }
+
+                        if (blocked) continue; // Don't render if wall blocks view
+
                         let screenX = (0.5 * (keyAngle / (FOV / 2)) + 0.5) * WIDTH;
                         let keySize = 40 / dist;
                         let bobY = Math.sin(Date.now() / 200) * 5;
@@ -1229,55 +1447,145 @@
                 while (doorAngle > Math.PI) doorAngle -= 2 * Math.PI;
 
                 if (Math.abs(doorAngle) < FOV / 1.5 && dist < MAX_DEPTH && dist > 0.5) {
-                    let screenX = (0.5 * (doorAngle / (FOV / 2)) + 0.5) * WIDTH;
-                    let doorHeight = HEIGHT / dist;
-                    let doorWidth = doorHeight * 0.6;
+                    // WALL OCCLUSION CHECK - Don't render if wall blocks view
+                    let rayDir = Math.atan2(dy, dx);
+                    let blocked = false;
+                    let checkDist = 0.5;
+                    while (checkDist < dist - 0.3) {
+                        let checkX = player.x + Math.cos(rayDir) * checkDist;
+                        let checkY = player.y + Math.sin(rayDir) * checkDist;
+                        if (map[Math.floor(checkY)] && map[Math.floor(checkY)][Math.floor(checkX)] === 1) {
+                            blocked = true;
+                            break;
+                        }
+                        checkDist += 0.3;
+                    }
 
-                    // Blood around door
-                    ctx.fillStyle = 'rgba(100, 0, 0, 0.6)';
-                    for (let i = 0; i < 8; i++) {
-                        let bx = screenX + (Math.random() - 0.5) * doorWidth * 2;
-                        let by = HEIGHT / 2 + (Math.random() - 0.5) * doorHeight;
+                    if (!blocked) { // Only render if not blocked
+                        let screenX = (0.5 * (doorAngle / (FOV / 2)) + 0.5) * WIDTH;
+                        let doorHeight = HEIGHT / dist;
+                        let doorWidth = doorHeight * 0.6;
+
+                        // Blood around door
+                        ctx.fillStyle = 'rgba(100, 0, 0, 0.6)';
+                        for (let i = 0; i < 8; i++) {
+                            let bx = screenX + (Math.random() - 0.5) * doorWidth * 2;
+                            let by = HEIGHT / 2 + (Math.random() - 0.5) * doorHeight;
+                            ctx.beginPath();
+                            ctx.arc(bx, by, 5 + Math.random() * 10, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+
+                        // Door frame
+                        if (exitDoor.active) {
+                            ctx.shadowBlur = 20;
+                            ctx.shadowColor = '#00FF00';
+                            ctx.fillStyle = '#004400';
+                        } else {
+                            ctx.fillStyle = '#331111';
+                        }
+                        ctx.fillRect(screenX - doorWidth / 2, HEIGHT / 2 - doorHeight / 2, doorWidth, doorHeight);
+
+                        // Door details
+                        ctx.strokeStyle = exitDoor.active ? '#00FF88' : '#660000';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(screenX - doorWidth / 2 + 5, HEIGHT / 2 - doorHeight / 2 + 5, doorWidth - 10, doorHeight - 10);
+
+                        // Handle
+                        ctx.fillStyle = exitDoor.active ? '#FFFF00' : '#444444';
                         ctx.beginPath();
-                        ctx.arc(bx, by, 5 + Math.random() * 10, 0, Math.PI * 2);
+                        ctx.arc(screenX + doorWidth / 4, HEIGHT / 2, doorWidth / 10, 0, Math.PI * 2);
                         ctx.fill();
+
+                        // "EXIT" text if active
+                        if (exitDoor.active && dist < 5) {
+                            ctx.shadowBlur = 10;
+                            ctx.shadowColor = '#00FF00';
+                            ctx.fillStyle = '#00FF00';
+                            ctx.font = `${Math.floor(20 / dist)}px Courier`;
+                            ctx.textAlign = 'center';
+                            ctx.fillText('EXIT', screenX, HEIGHT / 2 - doorHeight / 2 - 10);
+                            ctx.fillText('[E]', screenX, HEIGHT / 2);
+                        }
+
+                        ctx.shadowBlur = 0;
                     }
-
-                    // Door frame
-                    if (exitDoor.active) {
-                        ctx.shadowBlur = 20;
-                        ctx.shadowColor = '#00FF00';
-                        ctx.fillStyle = '#004400';
-                    } else {
-                        ctx.fillStyle = '#331111';
-                    }
-                    ctx.fillRect(screenX - doorWidth / 2, HEIGHT / 2 - doorHeight / 2, doorWidth, doorHeight);
-
-                    // Door details
-                    ctx.strokeStyle = exitDoor.active ? '#00FF88' : '#660000';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(screenX - doorWidth / 2 + 5, HEIGHT / 2 - doorHeight / 2 + 5, doorWidth - 10, doorHeight - 10);
-
-                    // Handle
-                    ctx.fillStyle = exitDoor.active ? '#FFFF00' : '#444444';
-                    ctx.beginPath();
-                    ctx.arc(screenX + doorWidth / 4, HEIGHT / 2, doorWidth / 10, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // "EXIT" text if active
-                    if (exitDoor.active && dist < 5) {
-                        ctx.shadowBlur = 10;
-                        ctx.shadowColor = '#00FF00';
-                        ctx.fillStyle = '#00FF00';
-                        ctx.font = `${Math.floor(20 / dist)}px Courier`;
-                        ctx.textAlign = 'center';
-                        ctx.fillText('EXIT', screenX, HEIGHT / 2 - doorHeight / 2 - 10);
-                        ctx.fillText('[E]', screenX, HEIGHT / 2);
-                    }
-
-                    ctx.shadowBlur = 0;
                 }
             }
+
+            // ===== RENDER SAW TRAPS AS 3D SPRITES =====
+            sawTraps.forEach(saw => {
+                let dx = saw.x - player.x;
+                let dy = saw.y - player.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                let sawAngle = Math.atan2(dy, dx) - player.dir;
+
+                while (sawAngle < -Math.PI) sawAngle += 2 * Math.PI;
+                while (sawAngle > Math.PI) sawAngle -= 2 * Math.PI;
+
+                if (Math.abs(sawAngle) < FOV / 1.5 && dist < MAX_DEPTH && dist > 0.3) {
+                    // WALL OCCLUSION CHECK - Don't render if wall blocks view
+                    let rayDir = Math.atan2(dy, dx);
+                    let blocked = false;
+                    let checkDist = 0.5;
+                    while (checkDist < dist - 0.3) {
+                        let checkX = player.x + Math.cos(rayDir) * checkDist;
+                        let checkY = player.y + Math.sin(rayDir) * checkDist;
+                        if (map[Math.floor(checkY)] && map[Math.floor(checkY)][Math.floor(checkX)] === 1) {
+                            blocked = true;
+                            break;
+                        }
+                        checkDist += 0.3;
+                    }
+
+                    if (blocked) return; // Skip this saw trap
+
+                    let screenX = (0.5 * (sawAngle / (FOV / 2)) + 0.5) * WIDTH;
+                    let sawSize = 60 / dist;
+                    let rotationAngle = Date.now() / 50; // Fast spinning
+
+                    // Draw rotating saw blade
+                    ctx.save();
+                    ctx.translate(screenX, HEIGHT / 2 + 20 / dist); // Position lower (floor level)
+
+                    // Glow effect
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#ff4400';
+
+                    // Outer ring
+                    ctx.strokeStyle = '#aa3300';
+                    ctx.lineWidth = sawSize / 8;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, sawSize / 2, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Inner metallic part
+                    ctx.fillStyle = '#666666';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, sawSize / 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Saw teeth (rotating lines)
+                    ctx.strokeStyle = '#ff6600';
+                    ctx.lineWidth = 3;
+                    for (let i = 0; i < 8; i++) {
+                        let angle = rotationAngle + (i / 8) * Math.PI * 2;
+                        ctx.beginPath();
+                        ctx.moveTo(Math.cos(angle) * sawSize / 4, Math.sin(angle) * sawSize / 4);
+                        ctx.lineTo(Math.cos(angle) * sawSize / 2, Math.sin(angle) * sawSize / 2);
+                        ctx.stroke();
+                    }
+
+                    // Center bolt
+                    ctx.fillStyle = '#333333';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, sawSize / 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+                    ctx.restore();
+                }
+            });
 
             // ===== RENDER MAGIC STAFF on screen =====
             renderStaff();
@@ -1469,7 +1777,8 @@
                     if (block === 1) {
                         minimapCtx.fillStyle = 'rgba(100, 100, 100, 0.8)';
                     } else if (block === 2) {
-                        minimapCtx.fillStyle = 'rgba(255, 215, 0, 0.9)'; // Keys are gold
+                        // Keys hidden on minimap - player must explore to find them
+                        continue;
                     } else if (block === 3) {
                         // Exit door - green if active, gray if not
                         if (exitDoor.active) {
@@ -1477,6 +1786,9 @@
                         } else {
                             minimapCtx.fillStyle = 'rgba(100, 50, 50, 0.7)';
                         }
+                    } else if (block === 5) {
+                        // Sticky ground - dark brown/red
+                        minimapCtx.fillStyle = 'rgba(80, 30, 20, 0.8)';
                     } else {
                         continue; // Don't draw empty
                     }
@@ -1488,6 +1800,8 @@
                     );
                 }
             }
+
+            // (Saw traps hidden on minimap for surprise factor)
 
             // (Enemies hidden on minimap for surprise factor)
 
@@ -1667,6 +1981,46 @@
                     o.start(audioCtx.currentTime + i * 0.15);
                     o.stop(audioCtx.currentTime + i * 0.15 + 0.15);
                 }
+
+            } else if (type === 'exhausted') {
+                // Heavy breathing / gasping sound
+                for (let i = 0; i < 3; i++) {
+                    const osc = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(80 + i * 20, audioCtx.currentTime + i * 0.15);
+                    osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + i * 0.15 + 0.1);
+                    g.gain.setValueAtTime(0.15, audioCtx.currentTime + i * 0.15);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + i * 0.15 + 0.15);
+                    osc.connect(g).connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime + i * 0.15);
+                    osc.stop(audioCtx.currentTime + i * 0.15 + 0.2);
+                }
+
+            } else if (type === 'saw_hit') {
+                // Grinding metal saw sound
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(150, audioCtx.currentTime + 0.05);
+                osc.frequency.linearRampToValueAtTime(250, audioCtx.currentTime + 0.1);
+                g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+                osc.connect(g).connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+
+                // Metal scrape
+                const osc2 = audioCtx.createOscillator();
+                const g2 = audioCtx.createGain();
+                osc2.type = 'square';
+                osc2.frequency.setValueAtTime(100, audioCtx.currentTime);
+                g2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                g2.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+                osc2.connect(g2).connect(audioCtx.destination);
+                osc2.start();
+                osc2.stop(audioCtx.currentTime + 0.1);
             }
         }
 
