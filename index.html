@@ -11,6 +11,10 @@
             background: #000;
             color: #fff;
             font-family: 'Courier New', monospace;
+        }
+
+        /* Cursor only hidden during gameplay, visible in menus */
+        body.gameplay-mode {
             cursor: none;
         }
 
@@ -76,6 +80,28 @@
             text-align: center;
             z-index: 10;
             cursor: pointer;
+            /* Creepy pixelated background */
+            background: rgba(0, 0, 0, 0.92);
+            padding: 50px 80px;
+            border: 3px solid #330000;
+            box-shadow:
+                0 0 60px rgba(80, 0, 0, 0.5),
+                inset 0 0 100px rgba(30, 0, 0, 0.8),
+                0 0 3px #550000;
+            image-rendering: pixelated;
+            min-width: 450px;
+        }
+
+        #start::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noise)" opacity="0.08"/%3E%3C/svg%3E');
+            pointer-events: none;
+            z-index: -1;
         }
 
         .hidden {
@@ -84,8 +110,36 @@
 
         h1 {
             font-size: 3rem;
-            text-shadow: 2px 0 red, -2px 0 blue;
-            letter-spacing: 5px;
+            text-shadow: 3px 0 #ff0000, -3px 0 #0000ff, 0 0 20px rgba(255, 0, 0, 0.5);
+            letter-spacing: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            animation: glitchTitle 3s infinite;
+            image-rendering: pixelated;
+            margin-bottom: 10px;
+        }
+
+        @keyframes glitchTitle {
+
+            0%,
+            90%,
+            100% {
+                transform: translate(0, 0);
+            }
+
+            92% {
+                transform: translate(-3px, 1px);
+                text-shadow: 5px 0 #ff0000, -5px 0 #0000ff;
+            }
+
+            94% {
+                transform: translate(3px, -1px);
+                text-shadow: -3px 0 #ff0000, 3px 0 #0000ff;
+            }
+
+            96% {
+                transform: translate(-2px, 0);
+            }
         }
 
         p {
@@ -155,6 +209,346 @@
         .exhausted #stamina-fill {
             background: linear-gradient(90deg, #ff0000, #ff4400) !important;
         }
+
+        /* ===== NEW MENU SYSTEM - CREEPY PIXELATED ===== */
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 30px 0;
+        }
+
+        .menu-btn {
+            background: rgba(20, 5, 5, 0.95);
+            border: 3px solid #550000;
+            color: #ff6666;
+            padding: 18px 50px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            image-rendering: pixelated;
+            box-shadow: 0 0 15px rgba(80, 0, 0, 0.6), inset 0 0 30px rgba(30, 0, 0, 0.5);
+            text-shadow: 2px 0 #ff0000, -2px 0 #0000ff, 0 0 10px rgba(255, 0, 0, 0.4);
+            animation: buttonGlitch 4s infinite;
+        }
+
+        @keyframes buttonGlitch {
+
+            0%,
+            95%,
+            100% {
+                transform: translate(0, 0);
+            }
+
+            96% {
+                transform: translate(-2px, 1px);
+            }
+
+            97% {
+                transform: translate(2px, -1px);
+            }
+
+            98% {
+                transform: translate(-1px, 0);
+            }
+        }
+
+        .menu-btn:hover {
+            background: rgba(80, 0, 0, 0.95);
+            border-color: #aa0000;
+            color: #ffffff;
+            box-shadow: 0 0 30px rgba(150, 0, 0, 0.7), inset 0 0 40px rgba(50, 0, 0, 0.6);
+            transform: scale(1.03);
+            text-shadow: 3px 0 #ff0000, -3px 0 #0000ff, 0 0 20px rgba(255, 0, 0, 0.7);
+        }
+
+        .menu-btn.primary {
+            background: linear-gradient(135deg, #330000, #550000);
+            border-color: #aa0000;
+            font-size: 1.5rem;
+            padding: 22px 60px;
+            color: #ff4444;
+            animation: primaryPulse 2s infinite, buttonGlitch 3s infinite;
+            text-shadow: 3px 0 #ff0000, -3px 0 #0000ff, 0 0 15px rgba(255, 0, 0, 0.6);
+        }
+
+        @keyframes primaryPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(200, 0, 0, 0.5), inset 0 0 30px rgba(50, 0, 0, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 35px rgba(200, 0, 0, 0.8), inset 0 0 50px rgba(80, 0, 0, 0.6);
+            }
+        }
+
+        .menu-btn.primary:hover {
+            background: linear-gradient(135deg, #550000, #880000);
+        }
+
+        .submenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 11;
+            background: rgba(5, 0, 0, 0.97);
+            padding: 40px 60px;
+            border: 3px solid #550000;
+            border-radius: 0px;
+            box-shadow:
+                0 0 60px rgba(80, 0, 0, 0.6),
+                inset 0 0 80px rgba(20, 0, 0, 0.9);
+            min-width: 450px;
+            cursor: pointer;
+            image-rendering: pixelated;
+        }
+
+        .submenu::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noise)" opacity="0.08"/%3E%3C/svg%3E');
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .submenu h2 {
+            color: #cc3333;
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            text-shadow: 3px 0 #ff0000, -3px 0 #0000ff, 0 0 15px rgba(255, 0, 0, 0.6);
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            animation: glitchTitle 3s infinite;
+        }
+
+        .diff-btn {
+            display: block;
+            width: 100%;
+            margin: 12px 0;
+            padding: 16px 25px;
+            background: rgba(30, 10, 10, 0.95);
+            border: 2px solid #440000;
+            color: #cc8888;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 2px;
+            text-shadow: 1px 0 #330000, -1px 0 #000033;
+        }
+
+        .diff-btn:hover {
+            background: rgba(60, 20, 20, 0.95);
+            border-color: #880000;
+            color: #ffaaaa;
+            text-shadow: 2px 0 #ff0000, -2px 0 #0000ff;
+        }
+
+        .diff-btn.selected {
+            background: rgba(100, 0, 0, 0.9);
+            border-color: #ff0000;
+            color: #fff;
+            text-shadow: 2px 0 #ff0000, -2px 0 #0000ff, 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        .diff-btn[data-diff="easy"]:hover {
+            border-color: #00ff00;
+        }
+
+        .diff-btn[data-diff="normal"]:hover {
+            border-color: #ffaa00;
+        }
+
+        .diff-btn[data-diff="hard"]:hover {
+            border-color: #ff0000;
+        }
+
+        .back-btn {
+            margin-top: 25px;
+            padding: 14px 40px;
+            background: rgba(20, 10, 10, 0.9);
+            border: 2px solid #550000;
+            color: #aa6666;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 2px;
+            text-shadow: 1px 0 #330000, -1px 0 #000033;
+        }
+
+        .back-btn:hover {
+            border-color: #aa0000;
+            color: #ffaaaa;
+            text-shadow: 2px 0 #ff0000, -2px 0 #0000ff;
+        }
+
+        .controls-list {
+            text-align: left;
+            line-height: 2.2;
+            color: #cc9999;
+            font-size: 1.1rem;
+            margin: 20px 0;
+            letter-spacing: 1px;
+            text-shadow: 1px 0 #330000, -1px 0 #000033;
+        }
+
+        .goal-text {
+            color: #00ff88;
+            font-size: 1rem;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 80, 40, 0.3);
+            border: 1px solid #00aa44;
+            text-shadow: 0 0 10px rgba(0, 255, 100, 0.5);
+            letter-spacing: 1px;
+        }
+
+        .scores-section {
+            text-align: left;
+            margin: 15px 0;
+        }
+
+        .scores-section h3 {
+            color: #ff6644;
+            font-size: 1.2rem;
+            margin: 20px 0 10px 0;
+            border-bottom: 2px solid #550000;
+            padding-bottom: 8px;
+            text-shadow: 2px 0 #ff0000, -2px 0 #0000ff;
+            letter-spacing: 2px;
+        }
+
+        .scores-section p {
+            color: #aa8888;
+            font-size: 1rem;
+            margin: 5px 0;
+            letter-spacing: 1px;
+        }
+
+        .scores-section .no-score {
+            color: #665555;
+            font-style: italic;
+        }
+
+        .hint-text {
+            font-size: 0.7rem;
+            color: #553333;
+            margin-top: 12px;
+            letter-spacing: 1px;
+            text-shadow: 1px 0 #330000, -1px 0 #000033;
+        }
+
+        /* Volume Slider */
+        .volume-control {
+            margin: 15px 0;
+            padding: 10px;
+            border-top: 1px solid #330000;
+        }
+
+        .volume-control label {
+            display: block;
+            color: #886666;
+            font-size: 0.75rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .volume-slider {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #220000;
+            border: 1px solid #440000;
+            cursor: pointer;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #880000;
+            border: 2px solid #aa3333;
+            cursor: pointer;
+        }
+
+        .volume-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #880000;
+            border: 2px solid #aa3333;
+            cursor: pointer;
+        }
+
+        .volume-val {
+            color: #aa5555;
+            font-size: 0.75rem;
+            margin-top: 5px;
+        }
+
+        /* Staff Selection Grid */
+        .staff-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+            padding: 10px;
+        }
+
+        .staff-card {
+            background: rgba(30, 10, 10, 0.95);
+            border: 2px solid #440000;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .staff-card:hover {
+            background: rgba(60, 20, 20, 0.95);
+            border-color: #880000;
+            transform: scale(1.05);
+        }
+
+        .staff-card.selected {
+            background: rgba(100, 0, 0, 0.9);
+            border-color: #ff0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        .staff-preview {
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #330000;
+        }
+
+        .staff-card span {
+            color: #cc8888;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .staff-card.selected span {
+            color: #ffffff;
+        }
     </style>
 </head>
 
@@ -176,18 +570,95 @@
 
     <div id="start">
         <h1>AYAZAĞADAN KAÇIŞ</h1>
-        <p style="font-size: 1rem; color: #ff4444; margin-bottom: 15px;">MÜHFAK SİZİ YOK EDECEK</p>
-        <p>[ BAŞLAMAK İÇİN TIKLA ]</p>
-        <p style="font-size: 0.8rem; color: #666;">KULAKLIK ÖNERİLİR</p>
-        🖱️ MOUSE = Etrafa Bak<br>
-        🖱️ SOL TIK = Büyü At<br>
-        🖱️ SAĞ TIK = Yakın Saldırı<br>
-        ⌨️ WASD = Yürü (Strafe)<br>
-        ⌨️ E = Kapıyı Aç<br>
-        ⌨️ SHIFT = Hızlı Yürü
-        </p>
-        <p style="font-size: 0.6rem; color: #555; margin-top: 10px;">3 anahtar bul → Çıkış kapısına git → E'ye bas →
-            Kaç!</p>
+        <p
+            style="font-size: 0.85rem; color: #882222; margin-bottom: 5px; letter-spacing: 2px; text-shadow: 1px 0 #ff0000, -1px 0 #0000ff;">
+            MÜHFAK SİZİ YOK EDECEK</p>
+
+        <div class="menu-buttons">
+            <button id="btn-start" class="menu-btn primary">KAMPÜSE GİR</button>
+            <button id="btn-difficulty" class="menu-btn">ZORLUK SEVİYESİ</button>
+            <button id="btn-staff" class="menu-btn">ASA SEÇ</button>
+            <button id="btn-controls" class="menu-btn">KONTROLLER</button>
+            <button id="btn-scores" class="menu-btn">EN İYİ KAÇIŞ SÜRELERİN</button>
+        </div>
+
+        <p class="hint-text">KULAKLIK ÖNERİLİR</p>
+    </div>
+
+    <!-- Zorluk Menüsü -->
+    <div id="difficulty-menu" class="submenu hidden">
+        <h2>ZORLUK SEVİYESİ</h2>
+        <button class="diff-btn" data-diff="easy">KOLAY - NORMAL EHABECİLER</button>
+        <button class="diff-btn selected" data-diff="normal">ORTA - WEİRD EHABECİLER</button>
+        <button class="diff-btn" data-diff="hard">ZOR - ASOSYAL PİÇLER</button>
+        <p style="color: #998877; font-size: 0.9rem; margin-top: 12px;">Seçili: <span id="current-diff"
+                style="color: #ddaa88;">ORTA</span></p>
+
+        <div class="volume-control">
+            <label>SES SEVİYESİ: <span id="volume-val">70%</span></label>
+            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="70">
+        </div>
+
+        <div style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #330000;">
+            <p style="color: #aa7766; font-size: 0.95rem; margin-bottom: 10px; font-style: italic;">
+                Eğer ehabecileri
+                yenemeyecek kadar ezikseniz minimapı buradan açabilirsiniz...</p><label
+                style="color: #ccaa99; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;"><input
+                    type="checkbox" id="minimap-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                MİNİMAP GÖSTER
+            </label>
+        </div>
+
+        <button id="diff-back" class="back-btn">GERİ</button>
+    </div>
+
+    <!-- Kontroller Menüsü -->
+    <div id="controls-menu" class="submenu hidden">
+        <h2>KONTROLLER</h2>
+        <div class="controls-list">
+            MOUSE = ETRAFA BAK<br>
+            SOL TIK = BÜYÜ AT<br>
+            SAĞ TIK = YAKIN SALDIRI<br>
+            WASD = YÜRÜ<br>
+            E = KAPIYI AÇ<br>
+            SHIFT = HIZLI KOŞ<br>
+            SPACE = OYUNU DURDUR
+        </div>
+        <div class="goal-text">3 ANAHTAR BUL → ÇIKIŞ KAPISINA GİT → E'YE BAS → KAMPÜSTEN KURTUL</div>
+        <button id="controls-back" class="back-btn">GERİ</button>
+    </div>
+
+    <!-- Skor Tablosu Menüsü -->
+    <div id="scores-menu" class="submenu hidden">
+        <h2>EN İYİ KAÇIŞ SÜRELERİN</h2>
+        <div id="scores-list">
+            <!-- JavaScript ile doldurulacak -->
+        </div>
+        <button id="scores-back" class="back-btn">GERİ</button>
+    </div>
+
+    <!-- Asa Seçim Menüsü -->
+    <div id="staff-menu" class="submenu hidden">
+        <h2>ASA SEÇ</h2>
+        <div class="staff-grid">
+            <div class="staff-card selected" data-staff="classic">
+                <canvas class="staff-preview" id="preview-classic" width="80" height="80"></canvas>
+                <span>KLASİK</span>
+            </div>
+            <div class="staff-card" data-staff="electric">
+                <canvas class="staff-preview" id="preview-electric" width="80" height="80"></canvas>
+                <span>ELEKTRİK</span>
+            </div>
+            <div class="staff-card" data-staff="paper">
+                <canvas class="staff-preview" id="preview-paper" width="80" height="80"></canvas>
+                <span>PEÇETE</span>
+            </div>
+            <div class="staff-card" data-staff="electronic">
+                <canvas class="staff-preview" id="preview-electronic" width="80" height="80"></canvas>
+                <span>TRANSİSTÖR</span>
+            </div>
+        </div>
+        <button id="staff-back" class="back-btn">GERİ</button>
     </div>
 
     <canvas id="game"></canvas>
@@ -244,22 +715,20 @@
         let collectedKeys = 0;
         let sanity = 100;
 
-        // SCARY ENEMIES ARRAY - MORE ENEMIES FOR BIGGER MAP!
+        // SCARY ENEMIES ARRAY - MIXED HORROR CREATURES!
         let enemies = [
-            // Shadow Stalker - The original, enhanced with glowing eyes and tendrils
+            // Shadow Stalker - Dark figure with glowing eyes
             { x: 18.5, y: 18.5, active: false, speed: 2.2, type: 'stalker', phase: 0, hp: 200, maxHp: 200, hitFlash: 0, breathPhase: 0 },
-            // The Crawler - Moves erratically on walls, spider-like
-            { x: 20.5, y: 5.5, active: false, speed: 3.5, type: 'crawler', phase: 0, hp: 120, maxHp: 120, hitFlash: 0, legPhase: 0 },
+            // Spider - 8-legged creature that shoots webs
+            { x: 20.5, y: 5.5, active: false, speed: 3.5, type: 'spider', phase: 0, hp: 120, maxHp: 120, hitFlash: 0, legPhase: 0, webCooldown: 0 },
             // Glitch Entity - Teleports randomly, distorts vision
             { x: 5.5, y: 18.5, active: false, speed: 1.8, type: 'glitch', phase: 0, teleportTimer: 0, hp: 160, maxHp: 160, hitFlash: 0 },
             // The Watcher - Giant floating eye, freezes player when looking
             { x: 12.5, y: 12.5, active: false, speed: 1.2, type: 'watcher', phase: 0, stareTimer: 0, hp: 240, maxHp: 240, hitFlash: 0, pupilX: 0, pupilY: 0 },
-            // Second Stalker for bigger map
+            // Second Stalker
             { x: 6.5, y: 6.5, active: false, speed: 2.0, type: 'stalker', phase: Math.PI, hp: 200, maxHp: 200, hitFlash: 0, breathPhase: 0 },
-            // Second Crawler
-            { x: 18.5, y: 8.5, active: false, speed: 3.2, type: 'crawler', phase: Math.PI / 2, hp: 120, maxHp: 120, hitFlash: 0, legPhase: 0 },
-            // NEW ENEMY: Third Stalker (The Ambiancer)
-            { x: 2.5, y: 15.5, active: false, speed: 2.4, type: 'stalker', phase: Math.PI / 3, hp: 200, maxHp: 200, hitFlash: 0, breathPhase: 0 }
+            // Second Spider
+            { x: 18.5, y: 8.5, active: false, speed: 3.2, type: 'spider', phase: Math.PI / 2, hp: 120, maxHp: 120, hitFlash: 0, legPhase: 0, webCooldown: 0 }
         ];
         let enemy = enemies[0]; // Keep for compatibility
         let screenShake = 0;
@@ -286,6 +755,46 @@
 
         // === PAUSE SYSTEM ===
         let isPaused = false;
+
+        // === DIFFICULTY SYSTEM ===
+        let difficulty = 'normal'; // 'easy', 'normal', 'hard'
+        const difficultySettings = {
+            easy: { enemySpeedMult: 0.7, damageMult: 0.5, staminaDrainMult: 0.7, sawDamageMult: 0.5, playerSpeedMult: 1.05 },
+            normal: { enemySpeedMult: 1.0, damageMult: 1.0, staminaDrainMult: 1.0, sawDamageMult: 1.0, playerSpeedMult: 1.0 },
+            hard: { enemySpeedMult: 1.4, damageMult: 1.5, staminaDrainMult: 1.3, sawDamageMult: 1.5, playerSpeedMult: 0.95 }
+        };
+
+        // === SCORE SYSTEM ===
+        let gameStartTime = 0;
+
+        // === DYNAMIC MUSIC SYSTEM ===
+        let musicIntensity = 0; // 0-1
+        let staticNoiseGain = null;
+        let staticNoiseNode = null;
+
+        // === BLACKOUT SYSTEM ===
+        let isBlackout = false;
+        let blackoutTimer = 0;
+        let blackoutDuration = 0;
+        let nextBlackoutIn = 60 + Math.random() * 60; // 60-120 seconds
+
+        // === SPIDER WEB SYSTEM ===
+        let spiderWebs = []; // { x, y, radius, lifetime }
+
+        // === MINIMAP TOGGLE ===
+        let showMinimap = false; // Varsayılan kapalı
+
+        // === VOLUME CONTROL ===
+        let masterVolume = 0.7; // 0-1
+
+        // === STAFF CUSTOMIZATION ===
+        let currentStaffType = localStorage.getItem('ayazaga_staff') || 'classic'; // 'classic', 'electric', 'paper', 'electronic'
+        const staffNames = {
+            classic: 'KLASİK MOR ASA',
+            electric: 'ELEKTRİK KABLOSU ⚡',
+            paper: 'TUVALET KAĞIDI 🧻',
+            electronic: 'ELEKTRONİK PARÇA 🔌'
+        };
 
         // --- INIT ---
         function init() {
@@ -314,13 +823,130 @@
             });
             document.addEventListener('keyup', e => handleKey(e.key, false));
 
-            startScreen.addEventListener('click', () => {
-                if (!audioCtx) initAudio();
+            // ===== NEW MENU SYSTEM =====
+            const difficultyMenu = document.getElementById('difficulty-menu');
+            const controlsMenu = document.getElementById('controls-menu');
+            const scoresMenu = document.getElementById('scores-menu');
+
+            // Start Game Button
+            document.getElementById('btn-start').addEventListener('click', (e) => {
+                e.stopPropagation();
+                startGame();
+            });
+
+            // Difficulty Menu
+            document.getElementById('btn-difficulty').addEventListener('click', (e) => {
+                e.stopPropagation();
                 startScreen.classList.add('hidden');
-                canvas.requestPointerLock();
-                running = true;
-                enemies.forEach(e => e.active = true);
-                requestAnimationFrame(loop);
+                difficultyMenu.classList.remove('hidden');
+            });
+
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    difficulty = btn.dataset.diff;
+                    const diffNames = { easy: 'KOLAY', normal: 'ORTA', hard: 'ZOR' };
+                    document.getElementById('current-diff').textContent = diffNames[difficulty];
+                });
+            });
+
+            document.getElementById('diff-back').addEventListener('click', (e) => {
+                e.stopPropagation();
+                difficultyMenu.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+            });
+
+            // Minimap Toggle - varsayılan kapalı
+            document.getElementById('minimap-container').style.display = 'none';
+            document.getElementById('minimap-toggle').addEventListener('change', (e) => {
+                showMinimap = e.target.checked;
+                document.getElementById('minimap-container').style.display = showMinimap ? 'block' : 'none';
+            });
+
+            // Controls Menu
+            document.getElementById('btn-controls').addEventListener('click', (e) => {
+                e.stopPropagation();
+                startScreen.classList.add('hidden');
+                controlsMenu.classList.remove('hidden');
+            });
+
+            document.getElementById('controls-back').addEventListener('click', (e) => {
+                e.stopPropagation();
+                controlsMenu.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+            });
+
+            // Scores Menu
+            document.getElementById('btn-scores').addEventListener('click', (e) => {
+                e.stopPropagation();
+                startScreen.classList.add('hidden');
+                scoresMenu.classList.remove('hidden');
+                showScores();
+            });
+
+            document.getElementById('scores-back').addEventListener('click', (e) => {
+                e.stopPropagation();
+                scoresMenu.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+            });
+
+            // Volume Slider
+            document.getElementById('volume-slider').addEventListener('input', (e) => {
+                masterVolume = e.target.value / 100;
+                document.getElementById('volume-val').textContent = e.target.value + '%';
+                // Update master gain if audio context exists
+                if (masterGainNode) {
+                    masterGainNode.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.1);
+                }
+            });
+
+            // Staff Menu
+            const staffMenu = document.getElementById('staff-menu');
+            document.getElementById('btn-staff').addEventListener('click', (e) => {
+                e.stopPropagation();
+                startScreen.classList.add('hidden');
+                staffMenu.classList.remove('hidden');
+                // Update selected card based on saved staff
+                document.querySelectorAll('.staff-card').forEach(c => {
+                    c.classList.remove('selected');
+                    if (c.dataset.staff === currentStaffType) c.classList.add('selected');
+                });
+                // Draw staff previews
+                drawAllStaffPreviews();
+            });
+
+            // Helper to update crosshair color based on staff
+            function updateCrosshairForStaff(type) {
+                const colors = {
+                    classic: '#ff00ff',
+                    electric: '#ffff00',
+                    paper: '#ffffff',
+                    electronic: '#00ff00'
+                };
+                crosshair.style.color = colors[type] || colors.classic;
+            }
+
+            document.querySelectorAll('.staff-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.staff-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    currentStaffType = card.dataset.staff;
+                    localStorage.setItem('ayazaga_staff', currentStaffType);
+                    updateCrosshairForStaff(currentStaffType);
+                    document.getElementById('current-staff').textContent = staffNames[currentStaffType];
+                });
+            });
+
+            // Set initial crosshair color
+            updateCrosshairForStaff(currentStaffType);
+
+            document.getElementById('staff-back').addEventListener('click', (e) => {
+                e.stopPropagation();
+                staffMenu.classList.add('hidden');
+                startScreen.classList.remove('hidden');
             });
 
             // MOUSE LOOK (FPS STYLE)
@@ -344,29 +970,140 @@
             document.addEventListener('contextmenu', (e) => e.preventDefault());
         }
 
+        // === START GAME FUNCTION ===
+        function startGame() {
+            if (!audioCtx) initAudio();
+            startScreen.classList.add('hidden');
+            document.body.classList.add('gameplay-mode'); // Hide cursor during gameplay
+
+            // Pointer lock with error handling for file:// protocol
+            try {
+                if (canvas.requestPointerLock) {
+                    canvas.requestPointerLock().catch(() => {
+                        // Ignore pointer lock errors on file:// protocol
+                        console.log('Pointer lock not available, using fallback mouse control');
+                    });
+                }
+            } catch (e) {
+                // Fallback for browsers that don't return a promise
+            }
+            running = true;
+            gameStartTime = Date.now();
+
+            // Apply difficulty-based player speed
+            player.speed = 2.5 * difficultySettings[difficulty].playerSpeedMult;
+
+            // Kolay modda 1 örümcek deaktif
+            if (difficulty === 'easy') {
+                let spiders = enemies.filter(e => e.type === 'spider');
+                if (spiders.length > 0) {
+                    spiders[spiders.length - 1].active = false; // Son örümceği kapat
+                    enemies.filter(e => e.type !== 'spider' || e !== spiders[spiders.length - 1]).forEach(e => e.active = true);
+                } else {
+                    enemies.forEach(e => e.active = true);
+                }
+            } else {
+                enemies.forEach(e => e.active = true);
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        // === SCORE FUNCTIONS ===
+        function saveScore(time) {
+            let key = `ayazaga_scores_${difficulty}`;
+            let scores = JSON.parse(localStorage.getItem(key) || '[]');
+
+            scores.push({
+                time: time,
+                date: new Date().toLocaleDateString('tr-TR')
+            });
+
+            // Keep top 3
+            scores.sort((a, b) => a.time - b.time);
+            scores = scores.slice(0, 3);
+
+            localStorage.setItem(key, JSON.stringify(scores));
+        }
+
+        function showScores() {
+            let scoresDiv = document.getElementById('scores-list');
+            scoresDiv.innerHTML = '';
+
+            ['easy', 'normal', 'hard'].forEach(diff => {
+                let key = `ayazaga_scores_${diff}`;
+                let scores = JSON.parse(localStorage.getItem(key) || '[]');
+
+                let diffName = diff === 'easy' ? 'KOLAY - NORMAL EHABECİLER' : diff === 'normal' ? 'ORTA - WEİRD EHABECİLER' : 'ZOR - ASOSYAL PİÇLER';
+                let html = `<div class="scores-section"><h3>${diffName}</h3>`;
+
+                if (scores.length === 0) {
+                    html += '<p class="no-score">HENÜZ KAYIT YOK...</p>';
+                } else {
+                    scores.slice(0, 3).forEach((s, i) => {
+                        let mins = Math.floor(s.time / 60);
+                        let secs = Math.floor(s.time % 60);
+                        let medal = i === 0 ? '1.' : i === 1 ? '2.' : '3.';
+                        html += `<p>${medal} ${mins}:${secs.toString().padStart(2, '0')} - ${s.date}</p>`;
+                    });
+                }
+                html += '</div>';
+                scoresDiv.innerHTML += html;
+            });
+        }
+
         // --- SPELL CASTING SYSTEM ---
         function castSpell() {
             staffCooldown = STAFF_COOLDOWN_TIME;
             staffGlow = 1.0;
 
-            // Create spell projectile
+            // Asa tipine göre renk ve efekt ayarları
+            const spellColors = {
+                classic: { primary: '#ff00ff', secondary: '#8800ff' },
+                electric: { primary: '#ffff00', secondary: '#ffaa00' },
+                paper: { primary: '#ffffff', secondary: '#dddddd' },
+                electronic: { primary: '#00ff00', secondary: '#00aa00' }
+            };
+            const colors = spellColors[currentStaffType] || spellColors.classic;
+
+            // Play sound based on staff
+            if (currentStaffType === 'electronic') {
+                // Electronic beep/glitch sound
+                if (audioCtx) {
+                    const osc = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+                    osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.2);
+                    g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                    osc.connect(g).connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                }
+            } else {
+                playSound('spell_cast');
+            }
+
+            // Create spell projectile with staff type
             const spell = {
                 x: player.x,
                 y: player.y,
                 dir: player.dir,
                 speed: 12,
                 life: 3,
-                damage: 25
+                damage: 25,
+                staffType: currentStaffType
             };
             spellProjectiles.push(spell);
-            playSound('spell_cast');
 
-            // Visual feedback
+            // Visual feedback based on staff type
             crosshair.style.transform = 'translate(-50%, -50%) scale(1.5)';
-            crosshair.style.color = '#ff00ff';
+            crosshair.style.color = colors.primary;
             setTimeout(() => {
                 crosshair.style.transform = 'translate(-50%, -50%) scale(1)';
-                crosshair.style.color = '#8800ff';
+                crosshair.style.color = colors.secondary;
             }, 100);
         }
 
@@ -621,9 +1358,16 @@
         }
 
         // --- AUDIO SYSTEM (Procedural) ---
+        let masterGainNode = null; // Master volume control
+
         function initAudio() {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AudioContext();
+
+            // Master gain node for volume control
+            masterGainNode = audioCtx.createGain();
+            masterGainNode.gain.value = masterVolume;
+            masterGainNode.connect(audioCtx.destination);
 
             // Ambiance (Low drone)
             ambianceNode = audioCtx.createOscillator();
@@ -637,7 +1381,7 @@
             filter.type = 'lowpass';
             filter.frequency.value = 120;
 
-            ambianceNode.connect(filter).connect(gain).connect(audioCtx.destination);
+            ambianceNode.connect(filter).connect(gain).connect(masterGainNode);
             ambianceNode.start();
 
             // Heartbeat logic setup
@@ -649,12 +1393,97 @@
                     osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.1);
                     g.gain.setValueAtTime(0.5, audioCtx.currentTime);
                     g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-                    osc.connect(g).connect(audioCtx.destination);
+                    osc.connect(g).connect(masterGainNode);
                     osc.start();
                     osc.stop(audioCtx.currentTime + 0.15);
                 }
             };
+
+            // === DYNAMIC MUSIC: Static Noise Generator ===
+            createStaticNoise();
         }
+
+        // Create static/interference noise for dynamic music
+        function createStaticNoise() {
+            if (!audioCtx) return;
+
+            const bufferSize = audioCtx.sampleRate * 2;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            staticNoiseNode = audioCtx.createBufferSource();
+            staticNoiseNode.buffer = buffer;
+            staticNoiseNode.loop = true;
+
+            staticNoiseGain = audioCtx.createGain();
+            staticNoiseGain.gain.value = 0; // Start silent
+
+            // Bandpass filter for radio static effect
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'bandpass';
+            noiseFilter.frequency.value = 1500;
+            noiseFilter.Q.value = 0.5;
+
+            staticNoiseNode.connect(noiseFilter).connect(staticNoiseGain).connect(masterGainNode);
+            staticNoiseNode.start();
+        }
+
+        // Update dynamic music based on enemy proximity
+        function updateDynamicMusic() {
+            if (!audioCtx || !staticNoiseGain) return;
+
+            // Find closest active enemy
+            let closestDist = MAX_DEPTH;
+            enemies.forEach(e => {
+                if (!e.active || e.hp <= 0) return;
+                let dx = e.x - player.x;
+                let dy = e.y - player.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < closestDist) closestDist = dist;
+            });
+
+            // Calculate intensity: 10 units = safe (0), 2 units = max danger (1)
+            musicIntensity = Math.max(0, Math.min(1, 1 - (closestDist - 2) / 8));
+
+            // Update ambiance frequency (higher = more tense)
+            if (ambianceNode) {
+                ambianceNode.frequency.setTargetAtTime(
+                    50 + musicIntensity * 80, // 50Hz → 130Hz
+                    audioCtx.currentTime, 0.3
+                );
+            }
+
+            // Update static noise volume
+            staticNoiseGain.gain.setTargetAtTime(
+                musicIntensity * 0.12, // 0 → 0.12
+                audioCtx.currentTime, 0.2
+            );
+        }
+
+        // === BLACKOUT SYSTEM ===
+        function updateBlackout(dt) {
+            if (isBlackout) {
+                blackoutTimer += dt;
+                if (blackoutTimer >= blackoutDuration) {
+                    isBlackout = false;
+                    blackoutTimer = 0;
+                    nextBlackoutIn = 60 + Math.random() * 60; // Reset timer
+                }
+            } else {
+                nextBlackoutIn -= dt;
+                if (nextBlackoutIn <= 0) {
+                    isBlackout = true;
+                    blackoutDuration = 1.5 + Math.random() * 2; // 1.5-3.5 seconds
+                    blackoutTimer = 0;
+                    playSound('power_out');
+                }
+            }
+        }
+
 
         // --- ENGINE CORE ---
         function loop(timestamp) {
@@ -685,38 +1514,76 @@
         // --- PAUSE SCREEN ---
         function renderPauseScreen() {
             // Dim the existing render
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
             ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
             // Pause text
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 32px Courier';
+            ctx.font = 'bold 28px Courier';
             ctx.textAlign = 'center';
             ctx.shadowBlur = 10;
             ctx.shadowColor = '#00ffff';
-            ctx.fillText('DURDURULDU', WIDTH / 2, HEIGHT / 2 - 20);
+            ctx.fillText('⏸ DURDURULDU', WIDTH / 2, 50);
 
+            // Controls section
             ctx.shadowBlur = 0;
-            ctx.font = '14px Courier';
-            ctx.fillStyle = '#aaa';
-            ctx.fillText('Devam etmek için SPACE bas', WIDTH / 2, HEIGHT / 2 + 20);
+            ctx.font = '11px Courier';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
 
-            // Show stats
+            const controls = [
+                '🖱️ MOUSE = Etrafa Bak',
+                '🖱️ SOL TIK = Büyü At',
+                '🖱️ SAĞ TIK = Yakın Saldırı',
+                '⌨️ WASD = Yürü',
+                '⌨️ SHIFT = Koş',
+                '⌨️ E = Kapı Aç',
+                '⌨️ SPACE = Durdur/Devam'
+            ];
+
+            let startY = 90;
+            let centerX = WIDTH / 2 - 80;
+            controls.forEach((ctrl, i) => {
+                ctx.fillText(ctrl, centerX, startY + i * 16);
+            });
+
+            // Stats
+            ctx.textAlign = 'center';
             ctx.font = '12px Courier';
-            ctx.fillStyle = '#666';
-            ctx.fillText(`Akıl Sağlığı: ${Math.floor(sanity)}% | Anahtarlar: ${collectedKeys}/3 | Dayanıklılık: ${Math.floor(stamina)}%`, WIDTH / 2, HEIGHT / 2 + 50);
+            ctx.fillStyle = '#0f0';
+            ctx.fillText('[ SPACE ile devam et ]', WIDTH / 2, HEIGHT - 50);
+
+            ctx.font = '10px Courier';
+            ctx.fillStyle = '#555';
+            ctx.fillText(
+                `Sağlık: ${Math.floor(sanity)}% | Anahtar: ${collectedKeys}/3 | Stamina: ${Math.floor(stamina)}%`,
+                WIDTH / 2, HEIGHT - 30
+            );
+
+            // Difficulty indicator
+            const diffNames = { easy: 'KOLAY', normal: 'ORTA', hard: 'ZOR' };
+            ctx.fillText(`Zorluk: ${diffNames[difficulty]}`, WIDTH / 2, HEIGHT - 15);
         }
 
         function update(dt) {
             if (gameWon) return;
+
+            // === DYNAMIC MUSIC UPDATE ===
+            updateDynamicMusic();
+
+            // === BLACKOUT SYSTEM UPDATE ===
+            updateBlackout(dt);
 
             // === STAMINA SYSTEM ===
             let isMoving = inputKeys.w || inputKeys.s || inputKeys.left || inputKeys.right;
             let wantToSprint = inputKeys.shift && isMoving;
             let canSprint = !isExhausted && stamina > 0;
 
+            // Apply difficulty multiplier to stamina drain
+            let staminaDrainWithDiff = staminaDrainRate * difficultySettings[difficulty].staminaDrainMult;
+
             if (wantToSprint && canSprint) {
-                stamina -= staminaDrainRate * dt;
+                stamina -= staminaDrainWithDiff * dt;
                 if (stamina <= 0) {
                     stamina = 0;
                     isExhausted = true;
@@ -750,13 +1617,27 @@
             let onStickyGround = (map[py] && map[py][px] === 5);
             let stickyMultiplier = onStickyGround ? 0.5 : 1.0;
 
+            // === SPIDER WEB UPDATE ===
+            spiderWebs = spiderWebs.filter(web => {
+                web.lifetime -= dt;
+                return web.lifetime > 0;
+            });
+
+            // Check if player is on a spider web
+            let onWeb = spiderWebs.some(web => {
+                let dx = player.x - web.x;
+                let dy = player.y - web.y;
+                return Math.sqrt(dx * dx + dy * dy) < web.radius;
+            });
+            let webMultiplier = onWeb ? 0.35 : 1.0; // 65% slow on web
+
             // Player Movement (WASD + Strafe)
-            // Determine actual speed: base, sprint, sticky
+            // Determine actual speed: base, sprint, sticky, web
             let baseSpeed = player.speed; // 2.5
             let sprintSpeed = 3.5;
             let actualSprint = (wantToSprint && canSprint);
             let currentSpeed = actualSprint ? sprintSpeed : baseSpeed;
-            currentSpeed *= stickyMultiplier;
+            currentSpeed *= stickyMultiplier * webMultiplier;
 
             const moveStep = currentSpeed * dt;
 
@@ -839,19 +1720,30 @@
                 let dist = Math.sqrt(dx * dx + dy * dy);
                 enemy.phase += dt * 5;
 
-                // Movement based on enemy type
+                // Movement based on enemy type - Apply difficulty multiplier
                 let moveX = 0, moveY = 0;
+                let speedMult = difficultySettings[difficulty].enemySpeedMult;
 
                 if (enemy.type === 'stalker') {
                     // Shadow Stalker - Slowly follows player
-                    moveX = (dx / dist) * enemy.speed * dt * 0.4;
-                    moveY = (dy / dist) * enemy.speed * dt * 0.4;
+                    moveX = (dx / dist) * enemy.speed * speedMult * dt * 0.4;
+                    moveY = (dy / dist) * enemy.speed * speedMult * dt * 0.4;
                 }
-                else if (enemy.type === 'crawler') {
-                    // Crawler - Erratic spider-like movement
+                else if (enemy.type === 'spider') {
+                    // Spider - Erratic spider-like movement with web shooting
+                    enemy.legPhase += dt * 8;
                     let erratic = Math.sin(enemy.phase * 3) * 0.5;
-                    moveX = (dx / dist + erratic) * enemy.speed * dt * 0.5;
-                    moveY = (dy / dist + Math.cos(enemy.phase * 4) * 0.5) * enemy.speed * dt * 0.5;
+                    moveX = (dx / dist + erratic) * enemy.speed * speedMult * dt * 0.5;
+                    moveY = (dy / dist + Math.cos(enemy.phase * 4) * 0.5) * enemy.speed * speedMult * dt * 0.5;
+
+                    // Spider web shooting
+                    if (!enemy.webCooldown) enemy.webCooldown = 0;
+                    enemy.webCooldown -= dt;
+                    if (dist < 6 && enemy.webCooldown <= 0) {
+                        spiderWebs.push({ x: player.x, y: player.y, radius: 1.2, lifetime: 4 });
+                        enemy.webCooldown = 5;
+                        playSound('web_shot');
+                    }
                 }
                 else if (enemy.type === 'glitch') {
                     // Glitch Entity - Teleports randomly
@@ -872,8 +1764,8 @@
                         }
                         enemy.teleportTimer = 0;
                     }
-                    moveX = (dx / dist) * enemy.speed * dt * 0.3;
-                    moveY = (dy / dist) * enemy.speed * dt * 0.3;
+                    moveX = (dx / dist) * enemy.speed * speedMult * dt * 0.3;
+                    moveY = (dy / dist) * enemy.speed * speedMult * dt * 0.3;
                 }
                 else if (enemy.type === 'watcher') {
                     // The Watcher - Freezes player when in view
@@ -890,8 +1782,8 @@
                         }
                     } else {
                         enemy.stareTimer = 0;
-                        moveX = (dx / dist) * enemy.speed * dt * 0.6;
-                        moveY = (dy / dist) * enemy.speed * dt * 0.6;
+                        moveX = (dx / dist) * enemy.speed * speedMult * dt * 0.6;
+                        moveY = (dy / dist) * enemy.speed * speedMult * dt * 0.6;
                     }
                 }
 
@@ -944,6 +1836,14 @@
                     return false;
                 }
                 if (map[Math.floor(spell.y)][Math.floor(spell.x)] === 1) {
+                    // Wall collision
+                    if (spell.staffType === 'electric') {
+                        // Electric wall hit effect (spawn sparks)
+                        // Simple logic: we don't spawn new physics objects, but we could play a sound
+                        // or add a temporary visual effect if we had a particle system.
+                        // For now, let's just make the screen flash yellow to simulate "grounding"
+                        if (dist < 5) screenShake = 2;
+                    }
                     return false;
                 }
 
@@ -1184,49 +2084,67 @@
                         ctx.ellipse(screenX, HEIGHT / 2, spriteWidth / 4, spriteHeight / 8 * pulse, 0, 0, Math.PI * 2);
                         ctx.fill();
                     }
-                    else if (enemy.type === 'crawler') {
-                        // THE CRAWLER - Spider-like horror with multiple legs
+                    else if (enemy.type === 'spider') {
+                        // SPIDER - 8-legged horror with glowing red eyes
                         let crawlOffset = Math.sin(enemy.phase * 4) * 5;
+                        let legPhaseAnim = enemy.legPhase || 0;
 
-                        // Body (hunched over)
-                        ctx.fillStyle = `rgba(40, 20, 30, ${1 - dist / 10})`;
+                        // Main body (oval abdomen)
+                        ctx.fillStyle = `rgba(20, 10, 15, ${1 - dist / 10})`;
                         ctx.beginPath();
-                        ctx.ellipse(screenX, HEIGHT / 2 + crawlOffset, spriteWidth / 2, spriteHeight / 3, 0, 0, Math.PI * 2);
+                        ctx.ellipse(screenX, HEIGHT / 2 + crawlOffset, spriteWidth / 2.5, spriteHeight / 3, 0, 0, Math.PI * 2);
                         ctx.fill();
 
-                        // Multiple spider legs
-                        ctx.strokeStyle = `rgba(60, 30, 40, ${1 - dist / 8})`;
-                        ctx.lineWidth = 4;
+                        // Head (smaller oval)
+                        ctx.beginPath();
+                        ctx.ellipse(screenX, HEIGHT / 2 - spriteHeight / 4 + crawlOffset, spriteWidth / 4, spriteHeight / 5, 0, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // 8 Spider legs with joints
+                        ctx.strokeStyle = `rgba(40, 20, 30, ${1 - dist / 8})`;
+                        ctx.lineWidth = 3;
                         for (let leg = 0; leg < 8; leg++) {
                             ctx.beginPath();
-                            let legX = screenX + (leg - 4) * spriteWidth / 8;
-                            let legPhase = Math.sin(enemy.phase * 6 + leg * 0.5) * 15;
-                            ctx.moveTo(legX, HEIGHT / 2 + crawlOffset);
-                            ctx.lineTo(legX + legPhase, HEIGHT / 2 + spriteHeight / 2 + Math.abs(legPhase));
+                            let side = leg < 4 ? -1 : 1;
+                            let legIndex = leg % 4;
+                            let baseX = screenX + side * spriteWidth / 6;
+                            let legAnim = Math.sin(legPhaseAnim + leg * 0.8) * 10;
+
+                            // First segment
+                            let midX = baseX + side * spriteWidth / 3;
+                            let midY = HEIGHT / 2 + crawlOffset - spriteHeight / 6 + legIndex * 8;
+                            ctx.moveTo(baseX, HEIGHT / 2 + crawlOffset);
+                            ctx.lineTo(midX, midY + legAnim);
+
+                            // Second segment (to ground)
+                            let endX = midX + side * spriteWidth / 4;
+                            let endY = HEIGHT / 2 + spriteHeight / 2 + Math.abs(legAnim) * 0.5;
+                            ctx.lineTo(endX, endY);
                             ctx.stroke();
                         }
 
-                        // Multiple glowing eyes (spider eyes)
-                        ctx.shadowBlur = 15;
-                        ctx.shadowColor = 'yellow';
-                        ctx.fillStyle = `rgba(255, 200, 0, ${1 - dist / 8})`;
-                        for (let eye = 0; eye < 6; eye++) {
+                        // Multiple glowing red eyes (8 eyes)
+                        ctx.shadowBlur = 12;
+                        ctx.shadowColor = '#ff0000';
+                        ctx.fillStyle = `rgba(255, 0, 0, ${1 - dist / 8})`;
+                        for (let eye = 0; eye < 8; eye++) {
                             ctx.beginPath();
-                            let eyeX = screenX + (eye - 2.5) * spriteWidth / 10;
-                            let eyeY = HEIGHT / 2 - spriteHeight / 5 + crawlOffset + (eye % 2) * 5;
-                            ctx.arc(eyeX, eyeY, spriteWidth / 15, 0, Math.PI * 2);
+                            let eyeX = screenX + (eye % 4 - 1.5) * spriteWidth / 12;
+                            let eyeY = HEIGHT / 2 - spriteHeight / 4 + crawlOffset + Math.floor(eye / 4) * 6 - 8;
+                            let eyeSize = eye < 2 || eye > 5 ? spriteWidth / 20 : spriteWidth / 14;
+                            ctx.arc(eyeX, eyeY, eyeSize, 0, Math.PI * 2);
                             ctx.fill();
                         }
                         ctx.shadowBlur = 0;
 
-                        // Mandibles
-                        ctx.strokeStyle = `rgba(80, 0, 0, ${1 - dist / 8})`;
-                        ctx.lineWidth = 3;
+                        // Fangs
+                        ctx.strokeStyle = `rgba(150, 100, 80, ${1 - dist / 8})`;
+                        ctx.lineWidth = 2;
                         ctx.beginPath();
-                        ctx.moveTo(screenX - spriteWidth / 6, HEIGHT / 2 + spriteHeight / 6 + crawlOffset);
-                        ctx.lineTo(screenX - spriteWidth / 3, HEIGHT / 2 + spriteHeight / 3 + crawlOffset);
-                        ctx.moveTo(screenX + spriteWidth / 6, HEIGHT / 2 + spriteHeight / 6 + crawlOffset);
-                        ctx.lineTo(screenX + spriteWidth / 3, HEIGHT / 2 + spriteHeight / 3 + crawlOffset);
+                        ctx.moveTo(screenX - spriteWidth / 12, HEIGHT / 2 - spriteHeight / 8 + crawlOffset);
+                        ctx.lineTo(screenX - spriteWidth / 10, HEIGHT / 2 + spriteHeight / 12 + crawlOffset);
+                        ctx.moveTo(screenX + spriteWidth / 12, HEIGHT / 2 - spriteHeight / 8 + crawlOffset);
+                        ctx.lineTo(screenX + spriteWidth / 10, HEIGHT / 2 + spriteHeight / 12 + crawlOffset);
                         ctx.stroke();
                     }
                     else if (enemy.type === 'glitch') {
@@ -1353,18 +2271,107 @@
                 if (Math.abs(spellAngle) < FOV / 1.5 && dist < MAX_DEPTH && dist > 0.3) {
                     let screenX = (0.5 * (spellAngle / (FOV / 2)) + 0.5) * WIDTH;
                     let spellSize = 30 / dist;
+                    let time = Date.now() / 1000;
 
-                    // Glowing magic orb
-                    ctx.shadowBlur = 25;
-                    ctx.shadowColor = '#ff00ff';
-                    ctx.beginPath();
-                    let gradient = ctx.createRadialGradient(screenX, HEIGHT / 2, 0, screenX, HEIGHT / 2, spellSize);
-                    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-                    gradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.9)');
-                    gradient.addColorStop(1, 'rgba(100, 0, 200, 0)');
-                    ctx.fillStyle = gradient;
-                    ctx.arc(screenX, HEIGHT / 2, spellSize, 0, Math.PI * 2);
-                    ctx.fill();
+                    // Asa tipine göre farklı büyü çizimi
+                    switch (spell.staffType) {
+                        case 'electric':
+                            // Sarı elektrik şimşeği
+                            ctx.shadowBlur = 30;
+                            ctx.shadowColor = '#ffff00';
+                            ctx.strokeStyle = '#ffff00';
+                            ctx.lineWidth = 3;
+                            // Zikzak şimşek çiz
+                            ctx.beginPath();
+                            ctx.moveTo(screenX - spellSize, HEIGHT / 2);
+                            for (let i = 0; i < 5; i++) {
+                                let zigX = screenX - spellSize + (i + 1) * (spellSize * 2 / 5);
+                                let zigY = HEIGHT / 2 + (i % 2 === 0 ? -1 : 1) * (spellSize * 0.6);
+                                ctx.lineTo(zigX, zigY);
+                            }
+                            ctx.stroke();
+                            // Merkez parlaklık
+                            ctx.fillStyle = '#ffffff';
+                            ctx.beginPath();
+                            ctx.arc(screenX, HEIGHT / 2, spellSize * 0.4, 0, Math.PI * 2);
+                            ctx.fill();
+                            // Sparklar
+                            for (let i = 0; i < 4; i++) {
+                                let sAngle = time * 10 + i * Math.PI / 2;
+                                ctx.fillStyle = '#ffff00';
+                                ctx.beginPath();
+                                ctx.arc(
+                                    screenX + Math.cos(sAngle) * spellSize * 0.8,
+                                    HEIGHT / 2 + Math.sin(sAngle) * spellSize * 0.8,
+                                    2, 0, Math.PI * 2
+                                );
+                                ctx.fill();
+                            }
+                            break;
+
+                        case 'paper':
+                            // Beyaz dönen kağıt
+                            ctx.shadowBlur = 15;
+                            ctx.shadowColor = '#ffffff';
+                            ctx.fillStyle = '#f5f5f5';
+                            ctx.save();
+                            ctx.translate(screenX, HEIGHT / 2);
+                            ctx.rotate(time * 5);
+                            // Kağıt parçaları
+                            for (let i = 0; i < 3; i++) {
+                                ctx.fillStyle = `rgba(255, 255, 255, ${0.9 - i * 0.2})`;
+                                ctx.fillRect(-spellSize * 0.8, -spellSize * 0.2 + i * 4, spellSize * 1.6, spellSize * 0.3);
+                            }
+                            ctx.restore();
+                            break;
+
+                        case 'electronic':
+                            {
+                                // Yeşil dijital/pixel - MATRIX TRAIL EFFECT
+                                ctx.shadowBlur = 20;
+                                ctx.shadowColor = '#00ff00';
+                                let pixelSize = Math.max(2, spellSize / 4);
+
+                                // Matrix Trail (Binary Rain) behind the projectile
+                                for (let k = 1; k < 5; k++) {
+                                    let trailX = screenX - Math.cos(spellAngle) * k * 20;
+                                    let trailY = HEIGHT / 2 + (k * 5) - 20; // Fake 3D perspective
+                                    ctx.font = `${Math.max(8, spellSize / 2)}px monospace`;
+                                    ctx.fillStyle = `rgba(0, 255, 0, ${0.6 / k})`;
+                                    ctx.fillText(Math.random() > 0.5 ? '1' : '0', trailX, trailY);
+                                }
+
+                                // Main projectile (pixel cluster)
+                                for (let px = -2; px <= 2; px++) {
+                                    for (let py = -2; py <= 2; py++) {
+                                        if (Math.abs(px) + Math.abs(py) <= 2) {
+                                            let alpha = 1 - (Math.abs(px) + Math.abs(py)) * 0.25;
+                                            let flicker = Math.random() > 0.8 ? 0.5 : 1;
+                                            ctx.fillStyle = `rgba(0, 255, 0, ${alpha * flicker})`;
+                                            ctx.fillRect(
+                                                screenX + px * pixelSize - pixelSize / 2,
+                                                HEIGHT / 2 + py * pixelSize - pixelSize / 2,
+                                                pixelSize, pixelSize
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+
+                        default:
+                            // Klasik mor orb
+                            ctx.shadowBlur = 25;
+                            ctx.shadowColor = '#ff00ff';
+                            ctx.beginPath();
+                            let gradient = ctx.createRadialGradient(screenX, HEIGHT / 2, 0, screenX, HEIGHT / 2, spellSize);
+                            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                            gradient.addColorStop(0.3, 'rgba(200, 100, 255, 0.9)');
+                            gradient.addColorStop(1, 'rgba(100, 0, 200, 0)');
+                            ctx.fillStyle = gradient;
+                            ctx.arc(screenX, HEIGHT / 2, spellSize, 0, Math.PI * 2);
+                            ctx.fill();
+                    }
                     ctx.shadowBlur = 0;
                 }
             });
@@ -1594,8 +2601,23 @@
                 ctx.restore();
             }
 
+            // ===== BLACKOUT EFFECT =====
+            if (isBlackout) {
+                let flickerAlpha = 0.92 + Math.random() * 0.08;
+                ctx.fillStyle = `rgba(0, 0, 0, ${flickerAlpha})`;
+                ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+                // Occasional small flickers
+                if (Math.random() < 0.08) {
+                    ctx.fillStyle = 'rgba(30, 30, 50, 0.4)';
+                    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+                }
+            }
+
             // ===== RENDER MINIMAP =====
-            renderMinimap();
+            if (showMinimap) {
+                renderMinimap();
+            }
         }
 
         // --- RENDER MAGIC STAFF (Enhanced Aesthetic Design) ---
@@ -1607,6 +2629,26 @@
 
             ctx.save();
 
+            // Draw different staff based on type
+            switch (currentStaffType) {
+                case 'electric':
+                    renderElectricStaff(staffX, staffY, time);
+                    break;
+                case 'paper':
+                    renderPaperStaff(staffX, staffY, time);
+                    break;
+                case 'electronic':
+                    renderElectronicStaff(staffX, staffY, time);
+                    break;
+                default:
+                    renderClassicStaff(staffX, staffY, time, glowIntensity);
+            }
+
+            ctx.restore();
+        }
+
+        // === CLASSIC PURPLE STAFF ===
+        function renderClassicStaff(staffX, staffY, time, glowIntensity) {
             // === ORNATE WOODEN HANDLE ===
             // Main shaft with wood grain effect
             let gradient = ctx.createLinearGradient(staffX, staffY, staffX - 35, staffY - 120);
@@ -1746,8 +2788,344 @@
                 ctx.arc(crystalX, crystalY - 5, 20, -Math.PI / 2, -Math.PI / 2 + (1 - cdPercent) * Math.PI * 2);
                 ctx.stroke();
             }
+        }
 
-            ctx.restore();
+        // === ELECTRIC CABLE STAFF ===
+        function renderElectricStaff(staffX, staffY, time) {
+            // === MAIN CABLE (Black) ===
+            ctx.strokeStyle = '#222222';
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            // Wavy cable shape
+            let wave = Math.sin(time * 5) * 5;
+            ctx.moveTo(staffX, staffY);
+            ctx.bezierCurveTo(staffX - 20 + wave, staffY - 50, staffX + 10 - wave, staffY - 100, staffX, staffY - 150);
+            ctx.stroke();
+
+            // === EXPOSED WIRES AT BASE ===
+            ['#dd0000', '#00dd00', '#0000dd'].forEach((c, i) => {
+                ctx.strokeStyle = c;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(staffX + 10 + i * 5, staffY);
+                ctx.quadraticCurveTo(staffX + 5, staffY - 40, staffX, staffY - 80);
+                ctx.stroke();
+            });
+
+            // === SPARKS AT TIP ===
+            let tipX = staffX;
+            let tipY = staffY - 150;
+
+            // Core
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#ffff00';
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath();
+            ctx.arc(tipX, tipY, 8 + Math.random() * 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Lightning bolts
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(tipX, tipY);
+                let angle = Date.now() / 200 + i * (Math.PI * 2 / 3);
+                let len = 30 + Math.random() * 20;
+                ctx.lineTo(tipX + Math.cos(angle) * len, tipY + Math.sin(angle) * len);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        // === TOILET PAPER STAFF ===
+        function renderPaperStaff(staffX, staffY, time) {
+            // Cardboard tube
+            let gradient = ctx.createLinearGradient(staffX, staffY, staffX - 30, staffY - 100);
+            gradient.addColorStop(0, '#8B7355');
+            gradient.addColorStop(0.5, '#A0826D');
+            gradient.addColorStop(1, '#6B5344');
+
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 14;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(staffX, staffY);
+            ctx.lineTo(staffX - 30, staffY - 100);
+            ctx.stroke();
+
+            // Tube hole
+            ctx.fillStyle = '#3D2817';
+            ctx.beginPath();
+            ctx.ellipse(staffX - 30, staffY - 100, 6, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Paper roll at top (unrolling animation)
+            let unroll = Math.sin(time * 2) * 0.2 + 1;
+            ctx.fillStyle = '#F5F5F5';
+            ctx.strokeStyle = '#E0E0E0';
+            ctx.lineWidth = 1;
+
+            // Main roll
+            ctx.beginPath();
+            ctx.ellipse(staffX - 35, staffY - 130, 12 * unroll, 18 * unroll, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Paper texture lines
+            ctx.strokeStyle = '#D0D0D0';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                ctx.arc(staffX - 35, staffY - 130, 5 + i * 3, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Trailing paper (flowing effect when casting)
+            if (staffGlow > 0.1) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                for (let i = 0; i < 8; i++) {
+                    let px = staffX - 35 + Math.sin(time * 5 + i) * (10 + i * 3);
+                    let py = staffY - 130 + i * 8;
+                    ctx.fillRect(px - 8, py, 16, 3);
+                }
+            }
+
+            // Glow effect
+            ctx.shadowBlur = 10 + staffGlow * 15;
+            ctx.shadowColor = '#FFFFFF';
+            ctx.fillStyle = staffGlow > 0.1 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(240, 240, 240, 0.6)';
+            ctx.beginPath();
+            ctx.arc(staffX - 35, staffY - 130, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Cooldown
+            if (staffCooldown > 0) {
+                let cdPercent = staffCooldown / STAFF_COOLDOWN_TIME;
+                ctx.strokeStyle = '#AAAAAA';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(staffX - 35, staffY - 130, 22, -Math.PI / 2, -Math.PI / 2 + (1 - cdPercent) * Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        // === ELECTRONIC COMPONENT STAFF ===
+        function renderElectronicStaff(staffX, staffY, time) {
+            // PCB-style handle (green circuit board)
+            let gradient = ctx.createLinearGradient(staffX, staffY, staffX - 35, staffY - 120);
+            gradient.addColorStop(0, '#1A5F1A');
+            gradient.addColorStop(0.5, '#2D8B2D');
+            gradient.addColorStop(1, '#1A5F1A');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.moveTo(staffX + 5, staffY);
+            ctx.lineTo(staffX - 5, staffY);
+            ctx.lineTo(staffX - 40, staffY - 120);
+            ctx.lineTo(staffX - 30, staffY - 120);
+            ctx.closePath();
+            ctx.fill();
+
+            // Circuit traces
+            ctx.strokeStyle = '#C0C0C0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                let yOff = i * 25 + 20;
+                ctx.moveTo(staffX - 2 - i * 3, staffY - yOff);
+                ctx.lineTo(staffX - 2 - i * 3, staffY - yOff - 10);
+                ctx.lineTo(staffX - 8 - i * 3, staffY - yOff - 10);
+                ctx.stroke();
+            }
+
+            // Transistor body at top (TO-220 package style)
+            ctx.fillStyle = '#333333';
+            ctx.fillRect(staffX - 50, staffY - 150, 30, 25);
+
+            // Metal tab
+            ctx.fillStyle = '#888888';
+            ctx.fillRect(staffX - 50, staffY - 155, 30, 8);
+
+            // Transistor text
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '6px monospace';
+            ctx.fillText('2N2222', staffX - 48, staffY - 137);
+
+            // Three pins
+            ctx.fillStyle = '#C0C0C0';
+            for (let i = 0; i < 3; i++) {
+                ctx.fillRect(staffX - 45 + i * 10, staffY - 125, 3, 20);
+            }
+
+            // LED indicator
+            let ledGlow = Math.sin(time * 6) * 0.5 + 0.5;
+            ctx.shadowBlur = 15 + staffGlow * 20;
+            ctx.shadowColor = staffGlow > 0.1 ? '#00FF00' : '#00AA00';
+            ctx.fillStyle = staffGlow > 0.1 ? `rgba(0, 255, 0, ${0.7 + ledGlow * 0.3})` : `rgba(0, 170, 0, ${0.5 + ledGlow * 0.3})`;
+            ctx.beginPath();
+            ctx.arc(staffX - 35, staffY - 165, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Capacitor near base
+            ctx.fillStyle = '#0066CC';
+            ctx.fillRect(staffX - 8, staffY - 60, 8, 15);
+            ctx.fillStyle = '#888888';
+            ctx.fillRect(staffX - 8, staffY - 60, 8, 3);
+
+            // Resistor bands
+            ctx.fillStyle = '#D2B48C';
+            ctx.fillRect(staffX - 15, staffY - 35, 12, 6);
+            ['#A52A2A', '#FF0000', '#FFA500', '#FFD700'].forEach((c, i) => {
+                ctx.fillStyle = c;
+                ctx.fillRect(staffX - 14 + i * 3, staffY - 35, 2, 6);
+            });
+
+            // Cooldown (digital style)
+            if (staffCooldown > 0) {
+                let cdPercent = staffCooldown / STAFF_COOLDOWN_TIME;
+                ctx.strokeStyle = '#00FF00';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.arc(staffX - 35, staffY - 140, 25, -Math.PI / 2, -Math.PI / 2 + (1 - cdPercent) * Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // === STAFF PREVIEW FUNCTIONS ===
+        function drawAllStaffPreviews() {
+            drawStaffPreview('preview-classic', 'classic');
+            drawStaffPreview('preview-electric', 'electric');
+            drawStaffPreview('preview-paper', 'paper');
+            drawStaffPreview('preview-electronic', 'electronic');
+        }
+
+        function drawStaffPreview(canvasId, staffType) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const pctx = canvas.getContext('2d');
+            pctx.clearRect(0, 0, 80, 80);
+
+            // Arka plan
+            pctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            pctx.fillRect(0, 0, 80, 80);
+
+            const cx = 40, cy = 45;
+
+            switch (staffType) {
+                case 'classic':
+                    // Mor kristal asa
+                    pctx.strokeStyle = '#8B4513';
+                    pctx.lineWidth = 4;
+                    pctx.lineCap = 'round';
+                    pctx.beginPath();
+                    pctx.moveTo(cx + 15, cy + 30);
+                    pctx.quadraticCurveTo(cx + 5, cy, cx, cy - 25);
+                    pctx.stroke();
+                    // Kristal
+                    pctx.shadowBlur = 10;
+                    pctx.shadowColor = '#ff00ff';
+                    pctx.fillStyle = '#aa44aa';
+                    pctx.beginPath();
+                    pctx.moveTo(cx, cy - 35);
+                    pctx.lineTo(cx - 8, cy - 20);
+                    pctx.lineTo(cx, cy - 10);
+                    pctx.lineTo(cx + 8, cy - 20);
+                    pctx.closePath();
+                    pctx.fill();
+                    pctx.shadowBlur = 0;
+                    break;
+
+                case 'electric':
+                    // Elektrik kablosu
+                    pctx.strokeStyle = '#222222';
+                    pctx.lineWidth = 5;
+                    pctx.lineCap = 'round';
+                    pctx.beginPath();
+                    pctx.moveTo(cx + 15, cy + 30);
+                    pctx.bezierCurveTo(cx + 10, cy + 10, cx - 5, cy - 10, cx, cy - 25);
+                    pctx.stroke();
+                    // Renkli kablolar
+                    ['#ff0000', '#00ff00', '#0000ff'].forEach((c, i) => {
+                        pctx.strokeStyle = c;
+                        pctx.lineWidth = 1.5;
+                        pctx.beginPath();
+                        pctx.moveTo(cx + 13 + (i - 1) * 2, cy + 28);
+                        pctx.lineTo(cx - 2 + (i - 1) * 2, cy - 20);
+                        pctx.stroke();
+                    });
+                    // Elektrik kıvılcımı
+                    pctx.shadowBlur = 8;
+                    pctx.shadowColor = '#ffff00';
+                    pctx.fillStyle = '#ffff00';
+                    pctx.beginPath();
+                    pctx.arc(cx, cy - 28, 6, 0, Math.PI * 2);
+                    pctx.fill();
+                    pctx.shadowBlur = 0;
+                    break;
+
+                case 'paper':
+                    // Tuvalet kağıdı
+                    pctx.strokeStyle = '#8B7355';
+                    pctx.lineWidth = 5;
+                    pctx.lineCap = 'round';
+                    pctx.beginPath();
+                    pctx.moveTo(cx + 15, cy + 30);
+                    pctx.lineTo(cx, cy - 10);
+                    pctx.stroke();
+                    // Kağıt rulosu
+                    pctx.fillStyle = '#F5F5F5';
+                    pctx.strokeStyle = '#E0E0E0';
+                    pctx.lineWidth = 1;
+                    pctx.beginPath();
+                    pctx.ellipse(cx - 3, cy - 20, 10, 15, 0, 0, Math.PI * 2);
+                    pctx.fill();
+                    pctx.stroke();
+                    // Çizgiler
+                    pctx.strokeStyle = '#D0D0D0';
+                    pctx.lineWidth = 0.5;
+                    for (let i = 0; i < 3; i++) {
+                        pctx.beginPath();
+                        pctx.arc(cx - 3, cy - 20, 4 + i * 4, 0, Math.PI * 2);
+                        pctx.stroke();
+                    }
+                    break;
+
+                case 'electronic':
+                    // Elektronik parça
+                    pctx.fillStyle = '#1A5F1A';
+                    pctx.beginPath();
+                    pctx.moveTo(cx + 12, cy + 30);
+                    pctx.lineTo(cx + 8, cy + 30);
+                    pctx.lineTo(cx - 8, cy - 15);
+                    pctx.lineTo(cx - 4, cy - 15);
+                    pctx.closePath();
+                    pctx.fill();
+                    // Transistör
+                    pctx.fillStyle = '#333333';
+                    pctx.fillRect(cx - 12, cy - 35, 20, 15);
+                    pctx.fillStyle = '#888888';
+                    pctx.fillRect(cx - 12, cy - 38, 20, 5);
+                    // Pinler
+                    pctx.fillStyle = '#C0C0C0';
+                    for (let i = 0; i < 3; i++) {
+                        pctx.fillRect(cx - 8 + i * 7, cy - 20, 2, 10);
+                    }
+                    // LED
+                    pctx.shadowBlur = 6;
+                    pctx.shadowColor = '#00ff00';
+                    pctx.fillStyle = '#00ff00';
+                    pctx.beginPath();
+                    pctx.arc(cx - 2, cy - 42, 4, 0, Math.PI * 2);
+                    pctx.fill();
+                    pctx.shadowBlur = 0;
+                    break;
+            }
         }
 
         // --- RENDER MINIMAP (Bird's eye view) ---
@@ -1806,9 +3184,15 @@
             // (Enemies hidden on minimap for surprise factor)
 
 
-            // Draw spell projectiles on minimap
-            minimapCtx.fillStyle = 'rgba(200, 100, 255, 0.9)';
+            // Draw spell projectiles on minimap (color based on staff type)
             spellProjectiles.forEach(spell => {
+                // Set color based on staff type
+                switch (spell.staffType) {
+                    case 'electric': minimapCtx.fillStyle = 'rgba(255, 255, 0, 0.9)'; break;
+                    case 'paper': minimapCtx.fillStyle = 'rgba(255, 255, 255, 0.9)'; break;
+                    case 'electronic': minimapCtx.fillStyle = 'rgba(0, 255, 0, 0.9)'; break;
+                    default: minimapCtx.fillStyle = 'rgba(200, 100, 255, 0.9)';
+                }
                 minimapCtx.beginPath();
                 minimapCtx.arc(
                     spell.x * MINIMAP_SCALE,
@@ -1872,7 +3256,7 @@
                 osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
                 g.gain.setValueAtTime(0.3, audioCtx.currentTime);
                 g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
-                osc.connect(g).connect(audioCtx.destination);
+                osc.connect(g).connect(masterGainNode);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.4);
 
@@ -1883,7 +3267,7 @@
                 osc2.frequency.setValueAtTime(30, audioCtx.currentTime);
                 g2.gain.setValueAtTime(0.2, audioCtx.currentTime);
                 g2.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
-                osc2.connect(g2).connect(audioCtx.destination);
+                osc2.connect(g2).connect(masterGainNode);
                 osc2.start();
                 osc2.stop(audioCtx.currentTime + 0.2);
 
@@ -1897,7 +3281,7 @@
                 }
                 g.gain.setValueAtTime(0.4, audioCtx.currentTime);
                 g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
-                osc.connect(g).connect(audioCtx.destination);
+                osc.connect(g).connect(masterGainNode);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.3);
 
@@ -1910,7 +3294,7 @@
                 osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.15);
                 g.gain.setValueAtTime(0.35, audioCtx.currentTime);
                 g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.25);
-                osc.connect(g).connect(audioCtx.destination);
+                osc.connect(g).connect(masterGainNode);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.25);
 
@@ -1925,7 +3309,7 @@
                 osc1.frequency.exponentialRampToValueAtTime(25, audioCtx.currentTime + 0.5);
                 g1.gain.setValueAtTime(0.5, audioCtx.currentTime);
                 g1.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
-                osc1.connect(g1).connect(audioCtx.destination);
+                osc1.connect(g1).connect(masterGainNode);
                 osc1.start();
                 osc1.stop(audioCtx.currentTime + 0.6);
 
@@ -1939,7 +3323,7 @@
                 }
                 g2.gain.setValueAtTime(0.25, audioCtx.currentTime);
                 g2.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
-                osc2.connect(g2).connect(audioCtx.destination);
+                osc2.connect(g2).connect(masterGainNode);
                 osc2.start();
                 osc2.stop(audioCtx.currentTime + 0.4);
 
@@ -1953,7 +3337,7 @@
                 osc1.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 1.2);
                 g1.gain.setValueAtTime(0.6, audioCtx.currentTime);
                 g1.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.5);
-                osc1.connect(g1).connect(audioCtx.destination);
+                osc1.connect(g1).connect(masterGainNode);
                 osc1.start();
                 osc1.stop(audioCtx.currentTime + 1.5);
 
@@ -1965,7 +3349,7 @@
                 osc2.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.8);
                 g2.gain.setValueAtTime(0.35, audioCtx.currentTime);
                 g2.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.0);
-                osc2.connect(g2).connect(audioCtx.destination);
+                osc2.connect(g2).connect(masterGainNode);
                 osc2.start();
                 osc2.stop(audioCtx.currentTime + 1.0);
 
@@ -1977,7 +3361,7 @@
                     o.frequency.setValueAtTime(15 + Math.random() * 15, audioCtx.currentTime + i * 0.15);
                     gg.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.15);
                     gg.gain.linearRampToValueAtTime(0, audioCtx.currentTime + i * 0.15 + 0.1);
-                    o.connect(gg).connect(audioCtx.destination);
+                    o.connect(gg).connect(masterGainNode);
                     o.start(audioCtx.currentTime + i * 0.15);
                     o.stop(audioCtx.currentTime + i * 0.15 + 0.15);
                 }
@@ -1992,7 +3376,7 @@
                     osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + i * 0.15 + 0.1);
                     g.gain.setValueAtTime(0.15, audioCtx.currentTime + i * 0.15);
                     g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + i * 0.15 + 0.15);
-                    osc.connect(g).connect(audioCtx.destination);
+                    osc.connect(g).connect(masterGainNode);
                     osc.start(audioCtx.currentTime + i * 0.15);
                     osc.stop(audioCtx.currentTime + i * 0.15 + 0.2);
                 }
@@ -2007,7 +3391,7 @@
                 osc.frequency.linearRampToValueAtTime(250, audioCtx.currentTime + 0.1);
                 g.gain.setValueAtTime(0.3, audioCtx.currentTime);
                 g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
-                osc.connect(g).connect(audioCtx.destination);
+                osc.connect(g).connect(masterGainNode);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.15);
 
@@ -2018,9 +3402,47 @@
                 osc2.frequency.setValueAtTime(100, audioCtx.currentTime);
                 g2.gain.setValueAtTime(0.15, audioCtx.currentTime);
                 g2.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
-                osc2.connect(g2).connect(audioCtx.destination);
+                osc2.connect(g2).connect(masterGainNode);
                 osc2.start();
                 osc2.stop(audioCtx.currentTime + 0.1);
+
+            } else if (type === 'power_out') {
+                // Electrical buzz and pop for power outage
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(60, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 0.1);
+                g.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+                osc.connect(g).connect(masterGainNode);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+
+                // Electric crackle
+                const noise = audioCtx.createOscillator();
+                const ng = audioCtx.createGain();
+                noise.type = 'square';
+                noise.frequency.setValueAtTime(2000, audioCtx.currentTime);
+                noise.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                ng.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                ng.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+                noise.connect(ng).connect(masterGainNode);
+                noise.start();
+                noise.stop(audioCtx.currentTime + 0.1);
+
+            } else if (type === 'web_shot') {
+                // Wet splat sound for spider web
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.15);
+                g.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                osc.connect(g).connect(masterGainNode);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
             }
         }
 
@@ -2029,6 +3451,13 @@
             running = false;
             gameWon = true;
             document.exitPointerLock();
+
+            // Calculate and save completion time
+            let completionTime = (Date.now() - gameStartTime) / 1000;
+            saveScore(completionTime);
+            let mins = Math.floor(completionTime / 60);
+            let secs = Math.floor(completionTime % 60);
+            let timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
 
             // Victory screen
             ctx.fillStyle = "rgba(0, 20, 0, 0.95)";
@@ -2046,19 +3475,31 @@
             ctx.textAlign = "center";
             ctx.shadowBlur = 20;
             ctx.shadowColor = "#00FF88";
-            ctx.fillText("AYAZAĞADAN KAÇTINIZ!", WIDTH / 2, HEIGHT / 2 - 40);
+            ctx.fillText("AYAZAĞADAN KAÇTINIZ!", WIDTH / 2, HEIGHT / 2 - 50);
+
+            // Show completion time
+            ctx.font = "18px Courier";
+            ctx.fillStyle = "#ffcc00";
+            ctx.shadowColor = "#ffcc00";
+            ctx.fillText(`⏱️ Süre: ${timeStr}`, WIDTH / 2, HEIGHT / 2 - 15);
 
             ctx.shadowBlur = 0;
             ctx.font = "12px Courier";
             ctx.fillStyle = "#66FFAA";
-            ctx.fillText("Ehabeliler elbet bir gün götünüzü sikecektir", WIDTH / 2, HEIGHT / 2 + 10);
-            ctx.fillText("ancak şimdilik kurtuldunuz.", WIDTH / 2, HEIGHT / 2 + 30);
+            ctx.fillText("Ehabeliler elbet bir gün götünüzü sikecektir", WIDTH / 2, HEIGHT / 2 + 15);
+            ctx.fillText("ancak şimdilik kurtuldunuz.", WIDTH / 2, HEIGHT / 2 + 35);
+
+            ctx.fillStyle = "#888";
+            ctx.font = "10px Courier";
+            const diffNames = { easy: 'KOLAY', normal: 'ORTA', hard: 'ZOR' };
+            ctx.fillText(`Zorluk: ${diffNames[difficulty]} | Skor kaydedildi!`, WIDTH / 2, HEIGHT / 2 + 55);
 
             ctx.fillStyle = "#fff";
             ctx.font = "14px Courier";
-            ctx.fillText("[ TEKRAR OYNAMAK İÇİN TIKLA ]", WIDTH / 2, HEIGHT / 2 + 70);
+            ctx.fillText("[ TEKRAR OYNAMAK İÇİN TIKLA ]", WIDTH / 2, HEIGHT / 2 + 85);
 
             if (ambianceNode) ambianceNode.stop();
+            if (staticNoiseNode) staticNoiseNode.stop();
 
             // Play victory sound
             if (audioCtx) {
